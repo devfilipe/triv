@@ -1,0 +1,86 @@
+{
+  "_doc": "Generic AI Agent driver \u2014 reasons over a task using an LLM node and executes actions on topology nodes as tools.",
+  "id": "generic-driver-agent",
+  "type": "ai-agent",
+  "label": "Generic AI Agent",
+  "vendor": "triv",
+  "version": "1.0.0",
+  "description": "AI agent driver \u2014 given a task, reasons step-by-step using an LLM node and executes actions on topology nodes exposed as tools.",
+  "accent_color": "#f5c2e7",
+  "driver_args_schema": {
+    "llm_node": {
+      "type": "node-select",
+      "filter_runtime": "llm",
+      "label": "LLM Node",
+      "description": "LLM node this agent uses for reasoning",
+      "required": true
+    },
+    "max_steps": {
+      "type": "number",
+      "label": "Max Steps",
+      "description": "Maximum reasoning iterations before the agent stops",
+      "required": false,
+      "default": 10
+    },
+    "max_tool_calls": {
+      "type": "number",
+      "label": "Max Tool Calls",
+      "description": "Hard cap on total tool executions per task (0 = unlimited)",
+      "required": false,
+      "default": 0
+    },
+    "context": {
+      "type": "text",
+      "label": "Context",
+      "description": "Domain knowledge injected into every task \u2014 describe the environment, criticality, topology purpose, etc.",
+      "required": false,
+      "placeholder": "This is a lab environment with 3 nodes. Node r1 acts as the default gateway."
+    },
+    "rules": {
+      "type": "text",
+      "label": "Rules",
+      "description": "Behavioral constraints in natural language \u2014 what the agent must or must not do",
+      "required": false,
+      "placeholder": "Never restart a node without logging the reason.\nOnly perform read-only actions unless the task explicitly requests a change."
+    },
+    "allowed_tools": {
+      "type": "agent-tool-multiselect",
+      "label": "Allowed Tools",
+      "description": "Tools this agent is allowed to call. Empty = all discovered tools are allowed.",
+      "required": false
+    },
+    "dry_run": {
+      "type": "boolean",
+      "label": "Dry Run",
+      "description": "When enabled, tools are described but NOT executed \u2014 safe for testing tasks",
+      "required": false,
+      "default": false
+    },
+    "system_prompt": {
+      "type": "text",
+      "label": "System Prompt (override)",
+      "description": "Fully replace the default agent system prompt (context and rules are still appended)",
+      "required": false
+    }
+  },
+  "actions": {
+    "agent-run": {
+      "id": "run-task",
+      "label": "Run Task",
+      "icon": "zap",
+      "type": "driver-command",
+      "driver": "generic-driver-agent-python",
+      "command": "# Agentic loop: LLM + tool_use over topology nodes \u2014 task via request body {\"task\": \"...\"}",
+      "ai_tool_enabled": false
+    },
+    "agent-tools": {
+      "id": "list-tools",
+      "label": "List Tools",
+      "icon": "layers",
+      "type": "driver-command",
+      "driver": "generic-driver-agent-python",
+      "command": "# Discover all ai-tool nodes in topology and list their exposed actions",
+      "ai_tool_enabled": false
+    }
+  }
+}

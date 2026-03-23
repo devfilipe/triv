@@ -1,0 +1,90 @@
+{
+  "_doc": "Generic JSON driver for application nodes. Placeholder for future app-level management.",
+  "id": "generic-driver-app",
+  "type": "app",
+  "label": "Generic Application",
+  "vendor": "triv",
+  "version": "1.0.0",
+  "description": "Placeholder driver for application-level nodes \u2014 provides a base to extend with custom start/stop and status actions.",
+  "accent_color": "#f5c2e7",
+  "driver_args_schema": {
+    "binary": {
+      "type": "string",
+      "label": "Program Name",
+      "description": "Path to the application binary or script",
+      "required": true,
+      "placeholder": "/usr/bin/my-app"
+    },
+    "args": {
+      "type": "string",
+      "label": "Parameters",
+      "description": "Command-line arguments for the application",
+      "required": false,
+      "placeholder": "--config /etc/my-app.conf"
+    },
+    "working_dir": {
+      "type": "string",
+      "label": "Working Directory",
+      "description": "Working directory for the process",
+      "required": false,
+      "placeholder": "/opt/my-app"
+    },
+    "env_vars": {
+      "type": "string",
+      "label": "Environment Variables",
+      "description": "KEY=VALUE pairs, one per line (or comma-separated)",
+      "required": false,
+      "placeholder": "LOG_LEVEL=debug,PORT=8080"
+    },
+    "restart_policy": {
+      "type": "string",
+      "label": "Restart Policy",
+      "description": "Restart behaviour: none, on-failure, always",
+      "required": false,
+      "default": "none"
+    }
+  },
+  "actions": {
+    "app-start": {
+      "id": "start",
+      "label": "Start",
+      "icon": "play",
+      "type": "exec",
+      "command": "echo '[placeholder] start app ${vm_name}'",
+      "ai_tool_enabled": false
+    },
+    "app-stop": {
+      "id": "stop",
+      "label": "Stop",
+      "icon": "square",
+      "type": "exec",
+      "command": "echo '[placeholder] stop app ${vm_name}'",
+      "confirm": "Stop application ${vm_name}?",
+      "ai_tool_enabled": false
+    },
+    "app-status": {
+      "id": "status",
+      "label": "Status",
+      "icon": "activity",
+      "type": "exec-output",
+      "command": "echo '[placeholder] status of app ${vm_name}'",
+      "ai_tool_enabled": false
+    },
+    "app-logs": {
+      "id": "logs",
+      "label": "Logs",
+      "icon": "file-text",
+      "type": "exec-output",
+      "command": "echo '[placeholder] logs for app ${vm_name}'",
+      "ai_tool_enabled": false
+    },
+    "app-restart": {
+      "id": "restart",
+      "label": "Restart",
+      "icon": "refresh-cw",
+      "type": "exec",
+      "command": "echo '[placeholder] restart app ${vm_name}'",
+      "ai_tool_enabled": false
+    }
+  }
+}

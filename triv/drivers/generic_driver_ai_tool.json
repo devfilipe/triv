@@ -1,0 +1,30 @@
+{
+  "_doc": "AI Tool marker driver — add to any node's capabilities to expose it as a callable tool for Agent nodes. Configure which actions are visible and provide a natural-language description.",
+  "id": "generic-driver-ai-tool",
+  "type": "ai-tool",
+  "label": "Generic AI Tool",
+  "vendor": "triv",
+  "version": "1.0.0",
+  "description": "Exposes a node as a callable tool for Agent nodes. Add to any node's capabilities to make its actions discoverable and invocable by AI agents via tool use.",
+  "accent_color": "#cba6f7",
+  "driver_args_schema": {
+    "description": {
+      "type": "string",
+      "label": "Node Description",
+      "description": "Natural-language description of this node for the AI agent (what it is, what it does)",
+      "required": false,
+      "placeholder": "Linux router managing the core network segment"
+    },
+    "expose_actions": {
+      "type": "action-multiselect",
+      "label": "Exposed Actions",
+      "description": "Actions exposed as tools to Agent nodes. Leave all unchecked to expose every non-interactive action.",
+      "required": false
+    }
+  },
+  "actions": {
+    "_marker": {
+      "_doc": "This driver has no executable actions — it is a capabilities marker only."
+    }
+  }
+}

@@ -1,0 +1,32 @@
+[build-system]
+requires      = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name        = "triv"
+version     = "1.0.0"
+description = "Network Element Virtualisation framework — multi-vendor, topology-aware orchestration"
+requires-python = ">=3.11"
+dependencies = []   # all deps are system tools (virsh, qemu-img, expect)
+
+[project.optional-dependencies]
+webui = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "websockets>=12.0",
+    "paramiko>=3.4.0",
+]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+triv-run    = "cli.run_ne:main"
+triv-manage = "cli.manage:main"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint.per-file-ignores]
+"webui/backend/app.py" = ["E402"]  # intentional: bootstrap must run before router imports
+
+[tool.setuptools.packages.find]
+include = ["triv*", "cli*"]

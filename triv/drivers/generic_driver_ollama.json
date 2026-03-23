@@ -1,0 +1,144 @@
+{
+  "_doc": "Ollama local LLM driver \u2014 manages and runs local Ollama models via the REST API.",
+  "id": "generic-driver-ollama",
+  "type": "ai-llm",
+  "label": "Generic Ollama",
+  "vendor": "triv",
+  "version": "1.0.0",
+  "description": "Local Ollama runtime \u2014 list, pull and delete models, run chat and generate embeddings directly on the host without an API key.",
+  "accent_color": "#cba6f7",
+  "driver_args_schema": {
+    "base_url": {
+      "type": "string",
+      "label": "Base URL",
+      "description": "Ollama server URL \u2014 use 'Check Connection' to verify",
+      "required": false,
+      "default": "http://localhost:11434",
+      "placeholder": "http://localhost:11434"
+    },
+    "model": {
+      "type": "model-select",
+      "label": "Model",
+      "description": "Ollama model \u2014 click refresh to fetch installed models from the local server",
+      "required": true,
+      "placeholder": "llama3",
+      "provider": "ollama",
+      "depends_on_url": "base_url"
+    },
+    "temperature": {
+      "type": "number",
+      "label": "Temperature",
+      "description": "Sampling temperature 0.0\u20132.0",
+      "required": false,
+      "default": 0.7
+    },
+    "num_predict": {
+      "type": "number",
+      "label": "Max Tokens",
+      "description": "Maximum tokens to generate (num_predict)",
+      "required": false,
+      "default": 2048
+    }
+  },
+  "actions": {
+    "ollama-check-connection": {
+      "id": "check-connection",
+      "label": "Check Connection",
+      "icon": "wifi",
+      "type": "driver-command",
+      "driver": "generic-driver-ollama-python",
+      "command": "# GET /api/version",
+      "ai_tool_enabled": false
+    },
+    "ollama-library": {
+      "id": "ollama-library",
+      "label": "Model Library",
+      "icon": "globe",
+      "type": "link",
+      "url": "https://ollama.com/library",
+      "ai_tool_enabled": false
+    },
+    "ollama-cli": {
+      "id": "ollama-cli",
+      "label": "Ollama CLI",
+      "icon": "terminal",
+      "type": "console",
+      "command": "docker exec -it ${vm_name} ollama",
+      "ai_tool_enabled": false
+    },
+    "ollama-status": {
+      "id": "status",
+      "label": "Status",
+      "icon": "activity",
+      "type": "driver-command",
+      "driver": "generic-driver-ollama-python",
+      "command": "# GET /api/version + /api/tags",
+      "ai_tool_enabled": false
+    },
+    "ollama-list-models": {
+      "id": "list-models",
+      "label": "List Models",
+      "icon": "layers",
+      "type": "driver-command",
+      "driver": "generic-driver-ollama-python",
+      "command": "# GET /api/tags \u2014 name, size, family, quantization, date",
+      "ai_tool_enabled": false
+    },
+    "ollama-ps": {
+      "id": "list-running",
+      "label": "Running Models",
+      "icon": "cpu",
+      "type": "driver-command",
+      "driver": "generic-driver-ollama-python",
+      "command": "# GET /api/ps \u2014 models loaded in memory / VRAM",
+      "ai_tool_enabled": false
+    },
+    "ollama-chat": {
+      "id": "chat",
+      "label": "Chat",
+      "icon": "message-square",
+      "type": "driver-command",
+      "driver": "generic-driver-ollama-python",
+      "command": "# POST /api/chat \u2014 prompt via request body {\"prompt\": \"...\"}",
+      "ai_tool_enabled": false
+    },
+    "ollama-pull": {
+      "id": "pull-model",
+      "label": "Pull Model",
+      "icon": "download",
+      "type": "driver-command",
+      "driver": "generic-driver-ollama-python",
+      "command": "# POST /api/pull {name: env.model, stream: false}",
+      "confirm": "Pull model '${env.model}' from Ollama registry?",
+      "ai_tool_enabled": false
+    },
+    "ollama-delete": {
+      "id": "delete-model",
+      "label": "Delete Model",
+      "icon": "trash-2",
+      "type": "driver-command",
+      "driver": "generic-driver-ollama-python",
+      "command": "# DELETE /api/delete {name: env.model}",
+      "confirm": "Delete model '${env.model}' from local Ollama? This cannot be undone.",
+      "ai_tool_enabled": false
+    },
+    "ollama-show": {
+      "id": "show-model",
+      "label": "Model Info",
+      "icon": "info",
+      "type": "driver-command",
+      "driver": "generic-driver-ollama-python",
+      "command": "# POST /api/show \u2014 modelfile, template, parameters, details",
+      "ai_tool_enabled": false
+    },
+    "ollama-embeddings": {
+      "id": "embeddings",
+      "label": "Test Embeddings",
+      "icon": "cpu",
+      "type": "driver-command",
+      "driver": "generic-driver-ollama-python",
+      "command": "# POST /api/embeddings \u2014 prompt via request body",
+      "ai_tool_enabled": false
+    }
+  }
+}

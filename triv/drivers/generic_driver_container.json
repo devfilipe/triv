@@ -1,0 +1,186 @@
+{
+  "_doc": "Generic JSON driver for Docker/Podman containers. Provides standard container lifecycle actions.",
+  "id": "generic-driver-container",
+  "type": "container",
+  "label": "Generic Container",
+  "vendor": "triv",
+  "version": "1.0.0",
+  "description": "Manages Docker/Podman containers \u2014 create, start, stop, remove and open an interactive shell.",
+  "accent_color": "#89b4fa",
+  "driver_args_schema": {
+    "image": {
+      "type": "string",
+      "label": "Container Image",
+      "description": "Docker/OCI image reference (e.g. alpine:latest, myregistry/myapp:v2)",
+      "required": true,
+      "placeholder": "alpine:latest"
+    },
+    "container-name": {
+      "type": "string",
+      "label": "Container Name",
+      "description": "Explicit container name. Defaults to triv-<node-id> if not set.",
+      "required": false,
+      "placeholder": "e.g. my-container"
+    },
+    "command": {
+      "type": "string",
+      "label": "Command",
+      "description": "Override the container entrypoint/command",
+      "required": false,
+      "placeholder": ""
+    },
+    "network_mode": {
+      "type": "string",
+      "label": "Network Mode",
+      "description": "Docker network mode: bridge, host, none, or a custom network name",
+      "required": false,
+      "default": "bridge"
+    },
+    "hostname": {
+      "type": "string",
+      "label": "Hostname",
+      "description": "Container hostname. Uses vm_name if empty.",
+      "required": false,
+      "placeholder": ""
+    },
+    "privileged": {
+      "type": "boolean",
+      "label": "Privileged",
+      "description": "Run container in privileged mode",
+      "required": false,
+      "default": false
+    },
+    "cap_add": {
+      "type": "string",
+      "label": "Capabilities (cap_add)",
+      "description": "Comma-separated list of Linux capabilities to add",
+      "required": false,
+      "placeholder": "NET_ADMIN,SYS_ADMIN"
+    },
+    "restart": {
+      "type": "string",
+      "label": "Restart Policy",
+      "description": "Container restart policy: no, always, unless-stopped, on-failure",
+      "required": false,
+      "default": "no"
+    },
+    "volumes": {
+      "type": "string",
+      "label": "Volumes",
+      "description": "Comma-separated volume mounts (host:container format)",
+      "required": false,
+      "placeholder": "/data:/mnt/data,/config:/etc/app"
+    },
+    "env_vars": {
+      "type": "string",
+      "label": "Environment Variables",
+      "description": "Comma-separated KEY=VALUE pairs",
+      "required": false,
+      "placeholder": "TZ=UTC,DEBUG=1"
+    },
+    "ports": {
+      "type": "string",
+      "label": "Port Mappings",
+      "description": "Comma-separated host:container port mappings",
+      "required": false,
+      "placeholder": "8080:80,443:443"
+    }
+  },
+  "actions": {
+    "container-create": {
+      "id": "create-container",
+      "label": "Create Container",
+      "icon": "box",
+      "type": "driver-command",
+      "driver": "generic-driver-container-python",
+      "command": "docker create --name ${vm_name} --network ${env.network_mode} --hostname ${vm_name} ${env.image}",
+      "confirm": "Create container ${vm_name} from image ${env.image}?",
+      "ai_tool_enabled": false
+    },
+    "container-start": {
+      "id": "start",
+      "label": "Start",
+      "icon": "play",
+      "type": "exec",
+      "command": "docker start ${vm_name}",
+      "ai_tool_enabled": false
+    },
+    "container-stop": {
+      "id": "stop",
+      "label": "Stop",
+      "icon": "square",
+      "type": "exec",
+      "command": "docker stop ${vm_name}",
+      "confirm": "Stop container ${vm_name}?",
+      "ai_tool_enabled": false
+    },
+    "container-restart": {
+      "id": "restart",
+      "label": "Restart",
+      "icon": "refresh-cw",
+      "type": "exec",
+      "command": "docker restart ${vm_name}",
+      "ai_tool_enabled": false
+    },
+    "container-rm": {
+      "id": "remove-container",
+      "label": "Remove",
+      "icon": "trash-2",
+      "type": "driver-command",
+      "driver": "generic-driver-container-python",
+      "command": "docker rm -f ${vm_name}",
+      "confirm": "Remove container ${vm_name}? (data inside will be lost)",
+      "ai_tool_enabled": false
+    },
+    "console": {
+      "id": "console",
+      "label": "Console (bash)",
+      "icon": "terminal",
+      "type": "console",
+      "command": "docker exec -it ${vm_name} bash",
+      "ai_tool_enabled": false
+    },
+    "console-sh": {
+      "id": "console-sh",
+      "label": "Console (sh)",
+      "icon": "terminal",
+      "type": "console",
+      "command": "docker exec -it ${vm_name} sh",
+      "ai_tool_enabled": false
+    },
+    "logs": {
+      "id": "logs",
+      "label": "Logs",
+      "icon": "file-text",
+      "type": "exec-output",
+      "command": "docker logs --tail 200 --timestamps ${vm_name}",
+      "ai_tool_enabled": false
+    },
+    "container-status": {
+      "id": "container-status",
+      "label": "Status",
+      "icon": "activity",
+      "type": "exec-output",
+      "command": "docker inspect --format 'Container:  {{.Name}}\nImage:      {{.Config.Image}}\nStatus:     {{.State.Status}}\nStarted:    {{.State.StartedAt}}\nPID:        {{.State.Pid}}\nHealth:     {{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}\nPorts:      {{range $k,$v := .NetworkSettings.Ports}}{{$k}}\u2192{{range $v}}{{.HostIp}}:{{.HostPort}}{{end}} {{end}}\nNetworks:   {{range $k,$v := .NetworkSettings.Networks}}{{$k}}({{$v.IPAddress}}) {{end}}\nMounts:     {{range .Mounts}}{{.Source}}\u2192{{.Destination}} {{end}}' ${vm_name}",
+      "ai_tool_enabled": false
+    },
+    "network-connect": {
+      "id": "connect-network",
+      "label": "Connect",
+      "icon": "cable",
+      "type": "driver-command",
+      "driver": "generic-driver-container-python",
+      "command": "docker network connect --ip <ip> triv-<bridge> ${vm_name}",
+      "ai_tool_enabled": false
+    },
+    "network-disconnect": {
+      "id": "disconnect-network",
+      "label": "Disconnect",
+      "icon": "unplug",
+      "type": "driver-command",
+      "driver": "generic-driver-container-python",
+      "command": "docker network disconnect triv-<bridge> ${vm_name}",
+      "ai_tool_enabled": false
+    }
+  }
+}

@@ -1,0 +1,60 @@
+# docker-compose.yml — triv WebUI stack
+#
+# All persistent triv state (projects, vendor drivers, templates) lives
+# under ~/.triv on the host.  The compose file bind-mounts the host's
+# directory into the container so both local and container runs share the
+# same data.
+#
+# Prerequisites on the host:
+#   - libvirtd running with UNIX socket at /var/run/libvirt/libvirt-sock
+#   - ~/.triv directory (created automatically by setup.sh)
+#
+# Usage:
+#   ./setup.sh docker          # build + start (recommended)
+#   docker compose -f docker/docker-compose.yml up --build -d
+#
+# Override the default project:
+#   TOPO_PROJECT_DIR=~/another_path docker compose up
+
+name: triv
+
+services:
+  backend:
+    container_name: triv-backend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.webui-backend
+      tags:
+        - triv-backend:latest
+    environment:
+      - TRIV_HOME=/root/.triv
+    volumes:
+      # ── triv data directory (single source of truth) ──
+      - ${HOME}/.triv:/root/.triv
+
+      # ── host integration ──
+      - /var/run/libvirt:/var/run/libvirt              # libvirt socket
+      - /var/run/docker.sock:/var/run/docker.sock      # docker socket
+      - /usr/bin/docker:/usr/local/bin/docker:ro       # docker CLI binary
+      - /usr/lib/docker/cli-plugins:/usr/lib/docker/cli-plugins:ro  # compose plugin
+      - /tmp:/tmp                                      # shared /tmp (qcow2 overlays)
+      - ${HOME}:${HOME}:ro                             # host home (image files)
+    network_mode: host
+    pid: host
+    privileged: true
+    restart: unless-stopped
+
+  frontend:
+    container_name: triv-frontend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.webui-frontend
+      tags:
+        - triv-frontend:latest
+    ports:
+      - "5173:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - backend
+    restart: unless-stopped

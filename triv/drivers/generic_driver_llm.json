@@ -1,0 +1,90 @@
+{
+  "_doc": "Generic LLM driver \u2014 OpenAI, Anthropic, Groq, xAI, Gemini and any OpenAI-compatible endpoint. For local Ollama use the dedicated Ollama driver.",
+  "id": "generic-driver-llm",
+  "type": "ai-llm",
+  "label": "Generic LLM",
+  "vendor": "triv",
+  "version": "1.0.0",
+  "description": "Connects to cloud and local LLM APIs (OpenAI, Anthropic, xAI, Gemini, Groq, Mistral, DeepSeek, LM Studio\u2026) \u2014 check status, list models and run chat completions.",
+  "accent_color": "#cba6f7",
+  "driver_args_schema": {
+    "provider": {
+      "type": "provider-select",
+      "label": "Provider",
+      "description": "LLM provider \u2014 pick from the list or type a custom value",
+      "required": true,
+      "default": "ollama",
+      "placeholder": "ollama"
+    },
+    "model": {
+      "type": "model-select",
+      "label": "Model",
+      "description": "Model name \u2014 type or pick from the list (varies by provider)",
+      "required": true,
+      "placeholder": "llama3",
+      "depends_on": "provider"
+    },
+    "base_url": {
+      "type": "string",
+      "label": "Base URL",
+      "description": "API base URL \u2014 leave empty to use provider default",
+      "required": false,
+      "placeholder": "http://localhost:11434"
+    },
+    "credential": {
+      "type": "secret",
+      "label": "Credential",
+      "description": "Secret from the triv secrets store \u2014 takes priority over API Key below",
+      "required": false
+    },
+    "api_key": {
+      "type": "password",
+      "label": "API Key (inline)",
+      "description": "API key stored directly \u2014 prefer using a named Credential instead",
+      "required": false
+    },
+    "temperature": {
+      "type": "number",
+      "label": "Temperature",
+      "description": "Sampling temperature 0.0\u20132.0",
+      "required": false,
+      "default": 0.7
+    },
+    "max_tokens": {
+      "type": "number",
+      "label": "Max Tokens",
+      "description": "Maximum tokens in the response",
+      "required": false,
+      "default": 2048
+    }
+  },
+  "actions": {
+    "llm-status": {
+      "id": "status",
+      "label": "Status",
+      "icon": "activity",
+      "type": "driver-command",
+      "driver": "generic-driver-llm-python",
+      "command": "# HTTP GET ${env.base_url}/api/tags (ollama) or /models (openai-compat)",
+      "ai_tool_enabled": false
+    },
+    "llm-list-models": {
+      "id": "list-models",
+      "label": "List Models",
+      "icon": "layers",
+      "type": "driver-command",
+      "driver": "generic-driver-llm-python",
+      "command": "# HTTP GET ${env.base_url}/api/tags (ollama) or /models (openai-compat)",
+      "ai_tool_enabled": false
+    },
+    "llm-chat": {
+      "id": "chat",
+      "label": "Chat",
+      "icon": "message-square",
+      "type": "driver-command",
+      "driver": "generic-driver-llm-python",
+      "command": "# HTTP POST ${env.base_url}/chat/completions \u2014 prompt via request body {\"prompt\": \"...\"}",
+      "ai_tool_enabled": false
+    }
+  }
+}

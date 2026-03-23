@@ -1,0 +1,94 @@
+{
+  "_doc": "Generic JSON driver for remote/physical nodes. Provides SSH-based management actions.",
+  "id": "generic-driver-remote",
+  "type": "remote",
+  "label": "Generic Remote Device",
+  "vendor": "triv",
+  "version": "1.0.0",
+  "description": "Manages remote or physical devices reachable via SSH \u2014 open a terminal, check status and reboot.",
+  "accent_color": "#fab387",
+  "driver_args_schema": {
+    "host": {
+      "type": "string",
+      "label": "Host / IP",
+      "description": "Hostname or IP address of the remote device",
+      "required": true,
+      "placeholder": "192.168.1.100"
+    },
+    "user": {
+      "type": "string",
+      "label": "SSH User",
+      "description": "Username for SSH connections",
+      "required": false,
+      "default": "root"
+    },
+    "port": {
+      "type": "number",
+      "label": "SSH Port",
+      "description": "SSH port number",
+      "required": false,
+      "default": 22
+    },
+    "identity_file": {
+      "type": "string",
+      "label": "SSH Key",
+      "description": "Path to SSH private key file (leave empty to use default)",
+      "required": false,
+      "placeholder": "~/.ssh/id_rsa"
+    },
+    "password": {
+      "type": "password",
+      "label": "Password",
+      "description": "SSH password (leave empty to use key-based auth)",
+      "required": false,
+      "placeholder": ""
+    }
+  },
+  "actions": {
+    "remote-ssh": {
+      "id": "ssh",
+      "label": "SSH Console",
+      "icon": "terminal",
+      "type": "console",
+      "host": "${env.host}",
+      "user": "${env.user}",
+      "port": "${env.port}",
+      "password": "${env.password}",
+      "command": "ssh -o StrictHostKeyChecking=no -p ${env.port} ${env.user}@${env.host}",
+      "ai_tool_enabled": false
+    },
+    "remote-ping": {
+      "id": "ping",
+      "label": "Ping",
+      "icon": "activity",
+      "type": "exec-output",
+      "command": "ping -c 4 ${env.host} 2>/dev/null || python3 -c \"import socket,sys\ntry:\n  s=socket.create_connection(('${env.host}',int('${env.port}')),2); print('TCP:${env.port} open on ${env.host}'); s.close()\nexcept Exception as e:\n  print(f'${env.host} unreachable: {e}'); sys.exit(1)\"",
+      "ai_tool_enabled": false
+    },
+    "remote-reboot": {
+      "id": "reboot",
+      "label": "Reboot",
+      "icon": "refresh-cw",
+      "type": "exec",
+      "command": "ssh -o StrictHostKeyChecking=no -p ${env.port} ${env.user}@${env.host} 'sudo reboot'",
+      "confirm": "Reboot remote device ${vm_name} (${env.host})?",
+      "ai_tool_enabled": false
+    },
+    "remote-uptime": {
+      "id": "uptime",
+      "label": "Uptime",
+      "icon": "info",
+      "type": "exec-output",
+      "command": "ssh -o StrictHostKeyChecking=no -p ${env.port} ${env.user}@${env.host} 'uptime'",
+      "ai_tool_enabled": false
+    },
+    "remote-status": {
+      "id": "status",
+      "label": "Status",
+      "icon": "info",
+      "type": "exec-output",
+      "command": "ssh -o StrictHostKeyChecking=no -p ${env.port} ${env.user}@${env.host} 'uname -a && uptime && ip -brief addr'",
+      "ai_tool_enabled": false
+    }
+  }
+}

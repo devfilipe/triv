@@ -1,0 +1,148 @@
+{
+  "_doc": "Generic JSON driver for libvirt/QEMU VMs. Provides standard VM actions.",
+  "id": "generic-driver-libvirt",
+  "type": "libvirt",
+  "label": "Generic Libvirt VM",
+  "vendor": "triv",
+  "version": "1.0.0",
+  "description": "Manages libvirt/QEMU virtual machines \u2014 define, start, stop, destroy and open a serial console via virsh.",
+  "accent_color": "#a6e3a1",
+  "driver_args_schema": {
+    "image-path": {
+      "type": "string",
+      "label": "Disk Image Path",
+      "description": "Path to the qcow2/raw base image for the VM",
+      "required": true,
+      "placeholder": "/path/to/images/my-image.qcow2"
+    },
+    "template": {
+      "type": "string",
+      "label": "Domain XML Template",
+      "description": "Path to libvirt domain XML template (relative to project). Leave empty for default.",
+      "required": false,
+      "placeholder": "templates/vm-box-template.xml"
+    },
+    "memory_mb": {
+      "type": "number",
+      "label": "Memory (MB)",
+      "description": "RAM allocation in megabytes",
+      "required": false,
+      "default": 1024
+    },
+    "vcpus": {
+      "type": "number",
+      "label": "vCPUs",
+      "description": "Number of virtual CPUs",
+      "required": false,
+      "default": 4
+    },
+    "uefi": {
+      "type": "boolean",
+      "label": "UEFI Boot",
+      "description": "Use UEFI firmware instead of BIOS",
+      "required": false,
+      "default": true
+    }
+  },
+  "actions": {
+    "vm-console": {
+      "id": "console",
+      "label": "Console",
+      "icon": "terminal",
+      "type": "console",
+      "command": "virsh -c qemu:///system console ${vm_name} --force",
+      "ai_tool_enabled": false
+    },
+    "vm-define": {
+      "id": "define",
+      "label": "Define VM",
+      "icon": "hard-drive",
+      "type": "define-vm",
+      "confirm": "Define (or redefine) ${vm_name}? This creates a fresh qcow2 overlay and registers the VM in libvirt.",
+      "ai_tool_enabled": false
+    },
+    "vm-start": {
+      "id": "start",
+      "label": "Start",
+      "icon": "play",
+      "type": "exec",
+      "command": "virsh -c qemu:///system start ${vm_name}",
+      "ai_tool_enabled": false
+    },
+    "vm-shutdown": {
+      "id": "shutdown",
+      "label": "Shutdown",
+      "icon": "power",
+      "type": "exec",
+      "command": "virsh -c qemu:///system shutdown ${vm_name}",
+      "confirm": "Send ACPI shutdown to ${vm_name}?",
+      "ai_tool_enabled": false
+    },
+    "vm-reboot": {
+      "id": "reboot",
+      "label": "Reboot",
+      "icon": "refresh-cw",
+      "type": "exec",
+      "command": "virsh -c qemu:///system reboot ${vm_name}",
+      "confirm": "Reboot ${vm_name}?",
+      "ai_tool_enabled": false
+    },
+    "vm-destroy": {
+      "id": "destroy",
+      "label": "Force Off",
+      "icon": "zap",
+      "type": "vm-destroy-clean",
+      "confirm": "Force power-off ${vm_name}? (unsaved data will be lost)",
+      "ai_tool_enabled": false
+    },
+    "vm-reset": {
+      "id": "reset",
+      "label": "Reset",
+      "icon": "rotate-ccw",
+      "type": "exec",
+      "command": "virsh -c qemu:///system reset ${vm_name}",
+      "confirm": "Hard-reset ${vm_name}? (like pressing the reset button)",
+      "ai_tool_enabled": false
+    },
+    "vm-suspend": {
+      "id": "suspend",
+      "label": "Suspend",
+      "icon": "pause",
+      "type": "exec",
+      "command": "virsh -c qemu:///system suspend ${vm_name}",
+      "ai_tool_enabled": false
+    },
+    "vm-resume": {
+      "id": "resume",
+      "label": "Resume",
+      "icon": "play",
+      "type": "exec",
+      "command": "virsh -c qemu:///system resume ${vm_name}",
+      "ai_tool_enabled": false
+    },
+    "vm-link-up": {
+      "id": "link-up",
+      "label": "Interfaces Up",
+      "icon": "link",
+      "type": "exec-output",
+      "command": "for mac in $(virsh -c qemu:///system domiflist ${vm_name} | awk 'NR>2 && NF{print $5}'); do virsh -c qemu:///system domif-setlink ${vm_name} \"$mac\" up --config && virsh -c qemu:///system domif-setlink ${vm_name} \"$mac\" up && echo \"  \u2714 $mac \u2192 up\"; done",
+      "ai_tool_enabled": false
+    },
+    "vm-info": {
+      "id": "vm-info",
+      "label": "VM Info",
+      "icon": "info",
+      "type": "exec-output",
+      "command": "echo '\u2500\u2500 Domain \u2500\u2500' && virsh -c qemu:///system dominfo ${vm_name} 2>/dev/null && echo '' && echo '\u2500\u2500 Interfaces \u2500\u2500' && virsh -c qemu:///system domiflist ${vm_name} 2>/dev/null && echo '' && echo '\u2500\u2500 Disks \u2500\u2500' && virsh -c qemu:///system domblklist ${vm_name} 2>/dev/null",
+      "ai_tool_enabled": false
+    },
+    "vm-screenshot": {
+      "id": "screenshot",
+      "label": "Screenshot",
+      "icon": "camera",
+      "type": "exec",
+      "command": "virsh -c qemu:///system screenshot ${vm_name} /tmp/${vm_name}-screenshot.ppm && echo 'Saved to /tmp/${vm_name}-screenshot.ppm'",
+      "ai_tool_enabled": false
+    }
+  }
+}
