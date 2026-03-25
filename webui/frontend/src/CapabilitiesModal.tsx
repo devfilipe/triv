@@ -195,8 +195,8 @@ function ModelField({ value, onChange, provider, baseUrl }: {
 /* ── ActionMultiselectField component ────────────────────────────── */
 // Used by generic-driver-ai-tool's "expose_actions" field.
 // Shows the node's OWN resolved actions so the user can pick which to expose.
-function ActionMultiselectField({ value, onChange, nodeId, catalog }: {
-  value: string; onChange: (v: string) => void; nodeId: string; catalog: CatalogDriver[]
+function ActionMultiselectField({ value, onChange, nodeId, catalog, apiBase = '/api/nodes' }: {
+  value: string; onChange: (v: string) => void; nodeId: string; catalog: CatalogDriver[]; apiBase?: string
 }) {
   const [groups, setGroups] = React.useState<{ driverId: string; driverLabel: string; accent: string; actions: { id: string; label: string }[] }[]>([])
   const [fetching, setFetching] = React.useState(false)
@@ -212,8 +212,8 @@ function ActionMultiselectField({ value, onChange, nodeId, catalog }: {
   const fetchActions = React.useCallback(async () => {
     setFetching(true)
     try {
-      const nodesData: any[] = await fetch('/api/nodes').then(r => r.json())
-      const nd = nodesData.find(n => n.id === nodeId)
+      const nodesData: any[] = await fetch(apiBase).then(r => r.json())
+      const nd = Array.isArray(nodesData) ? nodesData.find(n => n.id === nodeId) : null
       if (nd?.actions) {
         const groupMap = new Map<string, { id: string; label: string }[]>()
         for (const a of nd.actions as any[]) {
@@ -294,8 +294,8 @@ function ActionMultiselectField({ value, onChange, nodeId, catalog }: {
 }
 
 /* ── AgentToolMultiselectField component ─────────────────────────── */
-function AgentToolMultiselectField({ value, onChange, nodeId }: {
-  value: string; onChange: (v: string) => void; nodeId: string
+function AgentToolMultiselectField({ value, onChange, nodeId, apiBase = '/api/nodes' }: {
+  value: string; onChange: (v: string) => void; nodeId: string; apiBase?: string
 }) {
   const [tools, setTools] = React.useState<{ name: string; description: string; node_id: string; action_id: string }[]>([])
   const [fetching, setFetching] = React.useState(false)
@@ -311,8 +311,8 @@ function AgentToolMultiselectField({ value, onChange, nodeId }: {
     setFetching(true)
     try {
       const [toolsRes, nodesRes] = await Promise.all([
-        fetch(`/api/nodes/${nodeId}/agent/tools`),
-        fetch('/api/nodes'),
+        fetch(`${apiBase}/${nodeId}/agent/tools`),
+        fetch(apiBase),
       ])
       const toolsData = await toolsRes.json()
       const nodesData: any[] = await nodesRes.json()
@@ -400,8 +400,8 @@ function AgentToolMultiselectField({ value, onChange, nodeId }: {
 }
 
 /* ── NodeSelectField component ────────────────────────────────────── */
-function NodeSelectField({ value, onChange, filterRuntime }: {
-  value: string; onChange: (v: string) => void; filterRuntime?: string
+function NodeSelectField({ value, onChange, filterRuntime, apiBase = '/api/nodes' }: {
+  value: string; onChange: (v: string) => void; filterRuntime?: string; apiBase?: string
 }) {
   const [nodes, setNodes] = React.useState<{ id: string; label: string }[]>([])
   const [fetching, setFetching] = React.useState(false)
@@ -409,7 +409,7 @@ function NodeSelectField({ value, onChange, filterRuntime }: {
   const fetchNodes = React.useCallback(async () => {
     setFetching(true)
     try {
-      const r = await fetch('/api/nodes')
+      const r = await fetch(apiBase)
       const data: any[] = await r.json()
       setNodes(
         data
@@ -473,6 +473,10 @@ interface Props {
   node: NodeDef
   onClose: () => void
   onRefresh: () => void
+  /** Base URL for node API calls. Defaults to /api/nodes. Override for wizard nodes. */
+  apiBase?: string
+  /** When true, hide add-driver picker and per-driver remove buttons. */
+  lockedDrivers?: boolean
 }
 
 /* ── Styles ───────────────────────────────────────────────────────── */
@@ -507,7 +511,7 @@ const sectionHdr: React.CSSProperties = {
 }
 
 /* ── Modal ────────────────────────────────────────────────────────── */
-export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
+export default function CapabilitiesModal({ node, onClose, onRefresh, apiBase = '/api/nodes', lockedDrivers = false }: Props) {
   const nodeId = node.id
 
   const [caps, setCaps] = useState<CapabilitiesData | null>(null)
@@ -543,7 +547,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
   const loadCaps = useCallback(async (cat: CatalogDriver[]) => {
     setLoading(true); setError(''); setSuccess(''); setCollapsedDrivers(new Set())
     try {
-      const res = await fetch(`/api/nodes/${nodeId}/capabilities`)
+      const res = await fetch(`${apiBase}/${nodeId}/capabilities`)
       if (!res.ok) throw new Error(await res.text())
       const data: CapabilitiesData = await res.json()
       setCaps(data)
@@ -582,7 +586,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
   const handleInit = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/nodes/${nodeId}/capabilities/init`, { method: 'POST' })
+      const res = await fetch(`${apiBase}/${nodeId}/capabilities/init`, { method: 'POST' })
       const data = await res.json()
       if (data.ok) {
         setSuccess(data.created ? 'Capabilities file created!' : 'Already exists')
@@ -609,7 +613,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
       })
       const body: any = { drivers, actions: actionsToSave }
       if (health) body.health = health
-      const res = await fetch(`/api/nodes/${nodeId}/capabilities`, {
+      const res = await fetch(`${apiBase}/${nodeId}/capabilities`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
@@ -877,7 +881,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
                                 <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: '#f9e2af20', color: '#f9e2af' }}>{actionCount} act</span>
                               </div>
                             </div>
-                            <button onClick={e => { e.stopPropagation(); removeDriver(dIdx) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f38ba8' }}><Trash2 size={14} /></button>
+                            {!lockedDrivers && <button onClick={e => { e.stopPropagation(); removeDriver(dIdx) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f38ba8' }}><Trash2 size={14} /></button>}
                           </div>
 
                           {!isCollapsed && (
@@ -945,6 +949,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
                                           value={drv.driver_args[key] ?? ''}
                                           onChange={v => updateDriverArg(dIdx, key, v)}
                                           nodeId={nodeId}
+                                          apiBase={apiBase}
                                         />
                                         {field.description && <div style={{ fontSize: 9, color: 'var(--overlay0)', marginTop: 4 }}>{field.description}</div>}
                                       </>
@@ -955,6 +960,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
                                           onChange={v => updateDriverArg(dIdx, key, v)}
                                           nodeId={nodeId}
                                           catalog={catalog}
+                                          apiBase={apiBase}
                                         />
                                         {field.description && <div style={{ fontSize: 9, color: 'var(--overlay0)', marginTop: 4 }}>{field.description}</div>}
                                       </>
@@ -964,6 +970,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
                                           value={drv.driver_args[key] ?? ''}
                                           onChange={v => updateDriverArg(dIdx, key, v)}
                                           filterRuntime={field.filter_runtime}
+                                          apiBase={apiBase}
                                         />
                                         {field.description && <div style={{ fontSize: 9, color: 'var(--overlay0)', marginTop: 1 }}>{field.description}</div>}
                                       </>
@@ -1014,8 +1021,8 @@ export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
                       )
                     })}
 
-                    {/* Add driver picker */}
-                    <div style={{ marginTop: 8 }}>
+                    {/* Add driver picker — hidden for locked nodes */}
+                    {!lockedDrivers && <div style={{ marginTop: 8 }}>
                       <div style={{ ...labelSt, marginBottom: 6 }}>Add driver:</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {compatibleDrivers.map(cat => {
@@ -1037,7 +1044,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh }: Props) {
                           )
                         })}
                       </div>
-                    </div>
+                    </div>}
                   </div>
                 )}
               </div>

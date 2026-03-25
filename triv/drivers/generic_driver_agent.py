@@ -33,6 +33,8 @@ _AGENT_SYSTEM = textwrap.dedent(
     - After a tool call, interpret the output and decide the next step.
     - If a tool fails, try an alternative or explain why the task cannot be completed.
     - When done, provide a clear summary of what was accomplished.
+    - IMPORTANT: You must ALWAYS end with a text response summarising the result.
+      Never end your turn with only a tool call and no text.
 """
 )
 
@@ -479,6 +481,10 @@ class GenericAgentDriver(DriverBase):
                 oai_msg = choice.get("message", {})
                 if oai_msg.get("content"):
                     text_parts.append(oai_msg["content"])
+                # Some reasoning models (e.g. deepseek-reasoner) return
+                # content=null but place the answer in reasoning_content.
+                elif oai_msg.get("reasoning_content") and not oai_msg.get("tool_calls"):
+                    text_parts.append(oai_msg["reasoning_content"])
                 for tc in oai_msg.get("tool_calls") or []:
                     fn = tc.get("function", {})
                     try:
@@ -498,6 +504,40 @@ class GenericAgentDriver(DriverBase):
                 log.append("\n".join(text_parts))
 
             if not tool_calls or stop_reason in ("end_turn", "stop"):
+                # If the model returned no text and we executed tools in
+                # previous steps, ask the LLM once more to summarise the
+                # results.  This handles reasoning models (e.g.
+                # deepseek-reasoner) that return content=null after tool
+                # use instead of producing a final answer.
+                if not text_parts and total_tool_calls > 0 and step < max_steps:
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Please provide a clear and concise answer "
+                                "to my original question based on the tool "
+                                "results above."
+                            ),
+                        }
+                    )
+                    step += 1
+                    log.append(f"── Step {step} (summary) ──────────────────")
+                    follow = llm_drv.chat_with_tools(llm_env, messages, [], system)
+                    if follow.get("ok"):
+                        fdata = follow["data"]
+                        fcontent = fdata.get("content") or []
+                        ftext = ""
+                        # Anthropic format
+                        for blk in fcontent:
+                            if isinstance(blk, dict) and blk.get("type") == "text":
+                                ftext += blk.get("text", "")
+                        # OpenAI-compat format
+                        if not ftext and "choices" in fdata:
+                            fc = (fdata.get("choices") or [{}])[0]
+                            fm = fc.get("message", {})
+                            ftext = fm.get("content") or fm.get("reasoning_content") or ""
+                        if ftext:
+                            log.append(ftext)
                 log.append("\n✓ Done.")
                 break
 

@@ -17,6 +17,7 @@ from .base import Branding, DeviceCommand, DriverBase
 _PROVIDER_DEFAULTS: dict[str, str] = {
     "openai": "https://api.openai.com/v1",
     "anthropic": "https://api.anthropic.com",
+    "ollama": "http://localhost:11434/v1",
     "xai": "https://api.x.ai/v1",
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
     "groq": "https://api.groq.com/openai/v1",
@@ -367,7 +368,7 @@ class GenericLlmDriver(DriverBase):
             "tools": oai_tools,
             "messages": oai_msgs,
         }
-        ok, data = self._post(f"{base_url}/chat/completions", body, h, timeout=120)
+        ok, data = self._post(f"{base_url}/chat/completions", body, h, timeout=300)
         return {"ok": ok, "data": data}
 
     def _anthropic_chat(

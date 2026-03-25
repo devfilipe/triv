@@ -1,0 +1,343 @@
+{
+  "drivers": [
+    {
+      "driver": "generic-driver-ai-tool",
+      "driver_args": {
+        "description": "triv REST API client — create, read, update and delete topology elements, manage projects and drivers",
+        "expose_actions": "list-nodes, get-topology-summary, create-node, update-node, update-node-label, delete-node, add-link, remove-link, get-node-capabilities, set-node-capabilities, get-node-actions, run-node-action, start-node, stop-node, restart-node, list-secrets, set-secret, delete-secret, list-networks, create-network, assign-node-to-network, delete-network, deploy-network, undeploy-network, list-orgs, list-drivers, list-projects, create-project, activate-project, reload-topology"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "list-nodes",
+      "label": "List Nodes",
+      "type": "exec-output",
+      "command": "python3 __WIZARD_APP_PATH__ list-nodes",
+      "description": "List all nodes in the active topology with their ID, label, runtime and category",
+      "ai_tool_enabled": true
+    },
+    {
+      "id": "get-topology-summary",
+      "label": "Get Topology Summary",
+      "type": "exec-output",
+      "command": "python3 __WIZARD_APP_PATH__ get-topology-summary",
+      "description": "Return a structured summary of the active topology: nodes, links and network definitions",
+      "ai_tool_enabled": true
+    },
+    {
+      "id": "create-node",
+      "label": "Create Node",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ create-node '__PAYLOAD__'",
+      "description": "Create a new node in the active topology",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "id":       { "type": "string", "description": "Unique node ID (no spaces, use hyphens)", "required": false },
+        "label":    { "type": "string", "description": "Human-readable label for the node", "required": true },
+        "runtime":  { "type": "string", "description": "Runtime backend: docker, podman, libvirt, remote, app, llm, agent, or null for logical nodes", "required": false },
+        "category": { "type": "string", "description": "Node category: generic, llm, agent", "required": false },
+        "driver":   { "type": "string", "description": "Driver ID (e.g. generic-driver-llm). Leave empty for default.", "required": false }
+      }
+    },
+    {
+      "id": "update-node",
+      "label": "Update Node",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ update-node '__PAYLOAD__'",
+      "description": "Update any field of an existing node: label, runtime, driver, category, or interfaces",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id":    { "type": "string", "description": "ID of the node to update", "required": true },
+        "label":      { "type": "string", "description": "New display label", "required": false },
+        "runtime":    { "type": "string", "description": "New runtime backend", "required": false },
+        "driver":     { "type": "string", "description": "New driver ID", "required": false },
+        "category":   { "type": "string", "description": "New node category", "required": false },
+        "interfaces": { "type": "array",  "description": "Full replacement interface list [{id, type, label}]", "required": false }
+      }
+    },
+    {
+      "id": "update-node-label",
+      "label": "Update Node Label",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ update-node-label '__PAYLOAD__'",
+      "description": "Change the display label of a node",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id":   { "type": "string", "description": "ID of the node to update", "required": true },
+        "new_label": { "type": "string", "description": "New label text", "required": true }
+      }
+    },
+    {
+      "id": "delete-node",
+      "label": "Delete Node",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ delete-node '__PAYLOAD__'",
+      "description": "Remove a node from the topology (also removes connected links)",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id": { "type": "string", "description": "ID of the node to delete", "required": true }
+      }
+    },
+    {
+      "id": "add-link",
+      "label": "Add Link",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ add-link '__PAYLOAD__'",
+      "description": "Connect two nodes with a link between their interfaces",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "source_node":  { "type": "string", "description": "Source node ID", "required": true },
+        "source_iface": { "type": "string", "description": "Source interface ID", "required": true },
+        "target_node":  { "type": "string", "description": "Target node ID", "required": true },
+        "target_iface": { "type": "string", "description": "Target interface ID", "required": true }
+      }
+    },
+    {
+      "id": "remove-link",
+      "label": "Remove Link",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ remove-link '__PAYLOAD__'",
+      "description": "Delete a link by its ID",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "link_id": { "type": "string", "description": "ID of the link to remove", "required": true }
+      }
+    },
+    {
+      "id": "get-node-capabilities",
+      "label": "Get Node Capabilities",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ get-node-capabilities '__PAYLOAD__'",
+      "description": "Read the current capabilities and driver configuration for a node",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id": { "type": "string", "description": "ID of the node", "required": true }
+      }
+    },
+    {
+      "id": "set-node-capabilities",
+      "label": "Set Node Capabilities",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ set-node-capabilities '__PAYLOAD__'",
+      "description": "Write or update the capabilities (drivers and driver_args) for a node",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id":          { "type": "string", "description": "ID of the node", "required": true },
+        "capabilities_json": { "type": "string", "description": "Full capabilities JSON as a string (must include a drivers array)", "required": true }
+      }
+    },
+    {
+      "id": "get-node-actions",
+      "label": "Get Node Actions",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ get-node-actions '__PAYLOAD__'",
+      "description": "List the executable actions available on a node (driver commands)",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id": { "type": "string", "description": "ID of the node", "required": true }
+      }
+    },
+    {
+      "id": "run-node-action",
+      "label": "Run Node Action",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ run-node-action '__PAYLOAD__'",
+      "description": "Execute a driver action on a node (e.g. status, list-models, chat)",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id":   { "type": "string", "description": "ID of the node", "required": true },
+        "action_id": { "type": "string", "description": "ID of the action to execute", "required": true }
+      }
+    },
+    {
+      "id": "list-networks",
+      "label": "List Networks",
+      "type": "exec-output",
+      "command": "python3 __WIZARD_APP_PATH__ list-networks",
+      "description": "List all network definitions in the active topology",
+      "ai_tool_enabled": true
+    },
+    {
+      "id": "create-network",
+      "label": "Create Network",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ create-network '__PAYLOAD__'",
+      "description": "Create a new named network definition (bridge, vlan, or trunk)",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "id":    { "type": "string", "description": "Unique network ID", "required": true },
+        "type":  { "type": "string", "description": "Network type: bridge, vlan, or trunk", "required": true },
+        "label": { "type": "string", "description": "Human-readable label", "required": false }
+      }
+    },
+    {
+      "id": "assign-node-to-network",
+      "label": "Assign Node to Network",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ assign-node-to-network '__PAYLOAD__'",
+      "description": "Attach a node interface to a network definition",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id":    { "type": "string", "description": "ID of the node", "required": true },
+        "iface_id":   { "type": "string", "description": "ID of the interface on the node", "required": true },
+        "network_id": { "type": "string", "description": "ID of the network definition to attach to", "required": true }
+      }
+    },
+    {
+      "id": "list-drivers",
+      "label": "List Drivers",
+      "type": "exec-output",
+      "command": "python3 __WIZARD_APP_PATH__ list-drivers",
+      "description": "List all available drivers in the driver catalog (built-in and vendor)",
+      "ai_tool_enabled": true
+    },
+    {
+      "id": "list-projects",
+      "label": "List Projects",
+      "type": "exec-output",
+      "command": "python3 __WIZARD_APP_PATH__ list-projects",
+      "description": "List all registered triv projects, showing which one is currently active",
+      "ai_tool_enabled": true
+    },
+    {
+      "id": "create-project",
+      "label": "Create Project",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ create-project '__PAYLOAD__'",
+      "description": "Create a new triv project. If 'vendor' is given, the project is created under ~/.triv/vendors/<vendor>/. The project is registered but not activated — call activate-project afterwards.",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "name":        { "type": "string", "description": "Project display name", "required": true },
+        "vendor":      { "type": "string", "description": "Vendor name — project will be created under ~/.triv/vendors/<vendor>/", "required": false },
+        "dir_name":    { "type": "string", "description": "Directory name (slug). Derived from name if omitted.", "required": false },
+        "description": { "type": "string", "description": "Optional description", "required": false }
+      }
+    },
+    {
+      "id": "activate-project",
+      "label": "Activate Project",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ activate-project '__PAYLOAD__'",
+      "description": "Switch to a registered project, loading its topology as the active one",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "project_id": { "type": "string", "description": "ID of the project to activate", "required": true }
+      }
+    },
+    {
+      "id": "reload-topology",
+      "label": "Reload Topology",
+      "type": "exec-output",
+      "command": "python3 __WIZARD_APP_PATH__ reload-topology",
+      "description": "Reload the topology from disk for the active project",
+      "ai_tool_enabled": true
+    },
+    {
+      "id": "start-node",
+      "label": "Start Node",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ start-node '__PAYLOAD__'",
+      "description": "Start a node (VM, container, or service)",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id": { "type": "string", "description": "ID of the node to start", "required": true }
+      }
+    },
+    {
+      "id": "stop-node",
+      "label": "Stop Node",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ stop-node '__PAYLOAD__'",
+      "description": "Stop a running node (VM, container, or service)",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id": { "type": "string", "description": "ID of the node to stop", "required": true }
+      }
+    },
+    {
+      "id": "restart-node",
+      "label": "Restart Node",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ restart-node '__PAYLOAD__'",
+      "description": "Restart a node (stop then start)",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "node_id": { "type": "string", "description": "ID of the node to restart", "required": true }
+      }
+    },
+    {
+      "id": "list-secrets",
+      "label": "List Secrets",
+      "type": "exec-output",
+      "command": "python3 __WIZARD_APP_PATH__ list-secrets",
+      "description": "List all secret names in the triv secrets store (values are never returned)",
+      "ai_tool_enabled": true
+    },
+    {
+      "id": "set-secret",
+      "label": "Set Secret",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ set-secret '__PAYLOAD__'",
+      "description": "Create or update a named secret in the triv secrets store",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "name":  { "type": "string", "description": "Secret name (e.g. my-api-key)", "required": true },
+        "value": { "type": "string", "description": "Secret value", "required": true },
+        "type":  { "type": "string", "description": "Secret type: api-key, bearer, url, token", "required": false }
+      }
+    },
+    {
+      "id": "delete-secret",
+      "label": "Delete Secret",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ delete-secret '__PAYLOAD__'",
+      "description": "Delete a named secret from the triv secrets store",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "name": { "type": "string", "description": "Name of the secret to delete", "required": true }
+      }
+    },
+    {
+      "id": "delete-network",
+      "label": "Delete Network",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ delete-network '__PAYLOAD__'",
+      "description": "Delete a network definition",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "network_id": { "type": "string", "description": "ID of the network to delete", "required": true }
+      }
+    },
+    {
+      "id": "deploy-network",
+      "label": "Deploy Network",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ deploy-network '__PAYLOAD__'",
+      "description": "Deploy a network definition to the host (creates the bridge/vlan)",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "network_id": { "type": "string", "description": "ID of the network to deploy", "required": true }
+      }
+    },
+    {
+      "id": "undeploy-network",
+      "label": "Undeploy Network",
+      "type": "exec-with-data",
+      "command": "python3 __WIZARD_APP_PATH__ undeploy-network '__PAYLOAD__'",
+      "description": "Remove a deployed network from the host",
+      "ai_tool_enabled": true,
+      "tool_args": {
+        "network_id": { "type": "string", "description": "ID of the network to undeploy", "required": true }
+      }
+    },
+    {
+      "id": "list-orgs",
+      "label": "List Organizations",
+      "type": "exec-output",
+      "command": "python3 __WIZARD_APP_PATH__ list-orgs",
+      "description": "List all organizations registered in triv",
+      "ai_tool_enabled": true
+    }
+  ]
+}

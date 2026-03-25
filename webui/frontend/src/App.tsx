@@ -1,12 +1,12 @@
 /* triv WebUI — App: main multi-panel layout with Catppuccin dark theme */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import {
   LayoutDashboard, Server, Network, Cpu, Activity,
   Trash2, ChevronLeft, ChevronRight, Zap, Wifi, Edit3, Monitor,
   FolderOpen, Layers, Folder, Play, Square, RefreshCw, Upload,
   Settings, Hammer, AlertCircle, CheckCircle, PenTool,
-  Store, BrainCircuit, Github,
+  Store, BrainCircuit, Github, Wand2, Building2,
 } from 'lucide-react'
 import TopologyCanvas from './TopologyCanvas'
 import BuilderCanvas from './BuilderCanvas'
@@ -22,11 +22,14 @@ import FloatingJsonEditor from './FloatingJsonEditor'
 import FloatingChatPanel from './FloatingChatPanel'
 import FloatingTaskPanel from './FloatingTaskPanel'
 import ProjectManager from './ProjectManager'
+import OrgSelector from './OrgSelector'
 import NodeDrivers from './NodeDrivers'
 import NetworkManager from './NetworkManager'
 import NetStats from './NetStats'
 import AiCentral from './AiCentral'
-import { useNodes, useSystemStatus, useTopology, useLinks, useNetworks, useDrivers, useConnectivity, useProjects, useTopologyActions, useDiscoveredLinks, useNetworkDefs, useNetworkCatalog, useNetworkTemplates } from './hooks'
+import WizardConfig from './WizardConfig'
+import FloatingWizardPanel from './FloatingWizardPanel'
+import { useNodes, useSystemStatus, useTopology, useLinks, useNetworks, useDrivers, useConnectivity, useProjects, useTopologyActions, useDiscoveredLinks, useNetworkDefs, useNetworkCatalog, useNetworkTemplates, useOrgs } from './hooks'
 import type { NodeDef, ActionDef, NetworkDefDef } from './types'
 
 // Stable empty references — prevents infinite re-render loops in canvas components
@@ -35,7 +38,7 @@ import type { NodeDef, ActionDef, NetworkDefDef } from './types'
 const EMPTY_NETWORK_DEFS: NetworkDefDef[] = []
 const EMPTY_NETWORK_STATUSES: Record<string, any> = {}
 
-type View = 'topology' | 'apps' | 'builder' | 'nodes' | 'editor' | 'adhoc' | 'connectivity' | 'drivers' | 'status' | 'net-manager' | 'net-stats' | 'ai'
+type View = 'topology' | 'apps' | 'builder' | 'nodes' | 'editor' | 'adhoc' | 'connectivity' | 'drivers' | 'status' | 'net-manager' | 'net-stats' | 'ai' | 'wizard'
 
 /* ── Slim nav rail: only Topology + Apps ─────────────────────── */
 const NAV_ITEMS: { id: 'topology' | 'apps'; icon: React.FC<any>; label: string }[] = [
@@ -70,6 +73,7 @@ const APP_ENTRIES: AppEntry[] = [
   { id: 'status',       icon: Activity,       label: 'Status',      description: 'System health & bridge statistics',              color: '#f38ba8', category: 'System' },
   // AI
   { id: 'ai',           icon: BrainCircuit,   label: 'AI Central',  description: 'Inventory and capability of AI/LLM resources',   color: '#cba6f7', category: 'AI' },
+  { id: 'wizard',       icon: Wand2,          label: 'Wizard',      description: 'AI assistant — configure the built-in Wizard',    color: '#cba6f7', category: 'AI' },
 ]
 
 export default function App() {
@@ -87,6 +91,9 @@ export default function App() {
   const [taskPanel, setTaskPanel]   = useState<{ nodeId: string; title: string } | null>(null)
   const [jsonEditor, setJsonEditor] = useState<{ title: string; content: string; filename: string } | null>(null)
   const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set())
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [wizardEnabled, setWizardEnabled] = useState(false)
+  const [wizardBusy, setWizardBusy] = useState(false)
 
   // Data hooks
   const { data: nodes, refresh: refreshNodes } = useNodes()
@@ -102,6 +109,18 @@ export default function App() {
   const networkDefs        = useNetworkDefs()
   const networkCatalog     = useNetworkCatalog()
   const networkTemplates   = useNetworkTemplates()
+  const orgs               = useOrgs()
+  const [showOrgSelector, setShowOrgSelector] = useState(false)
+
+  useEffect(() => {
+    if (!orgs.loading && orgs.data.orgs.length > 0 && !orgs.data.active_org) {
+      setShowOrgSelector(true)
+    }
+  }, [orgs.loading, orgs.data.orgs.length, orgs.data.active_org])
+
+  useEffect(() => {
+    fetch('/api/wizard/status').then(r => r.json()).then(d => setWizardEnabled(!!d.enabled)).catch(() => {})
+  }, [view])  // re-check when user navigates away from wizard config
 
   const selectedNode = nodes.find(n => n.id === selectedId) ?? null
 
@@ -249,6 +268,58 @@ export default function App() {
 
         {/* Spacer */}
         <div style={{ flex: 1 }} />
+
+        {/* Wizard trigger */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => {
+              if (['builder', 'drivers', 'net-manager', 'nodes', 'topology'].includes(view)) {
+                setWizardOpen(v => !v)
+              } else {
+                setView('wizard')
+              }
+            }}
+            title={wizardEnabled ? 'Open Wizard' : 'Wizard (disabled — configure in Apps → Wizard)'}
+            style={{
+              width: 40, height: 40, borderRadius: 8,
+              border: wizardOpen ? '1px solid #cba6f7' : '1px solid var(--surface1)',
+              cursor: 'pointer',
+              background: wizardOpen ? 'color-mix(in srgb, #cba6f7 20%, var(--surface0))' : 'transparent',
+              color: wizardOpen ? '#cba6f7' : wizardEnabled ? '#cba6f7' : 'var(--overlay0)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s ease',
+              opacity: wizardEnabled ? 1 : 0.4,
+            }}
+          >
+            <Wand2 size={17} />
+          </button>
+          {wizardBusy && (
+            <span style={{
+              position: 'absolute', top: 4, right: 4,
+              width: 7, height: 7, borderRadius: '50%',
+              background: '#a6e3a1',
+              animation: 'wizardPulse 1.2s ease-in-out infinite',
+              pointerEvents: 'none',
+            }} />
+          )}
+        </div>
+
+        {/* Org indicator / switcher */}
+        <button
+          onClick={() => setShowOrgSelector(true)}
+          title={orgs.data.active_org ? `Org: ${orgs.data.orgs.find(o => o.id === orgs.data.active_org)?.name ?? orgs.data.active_org}` : 'Select Organization'}
+          style={{
+            width: 40, height: 40, borderRadius: 8,
+            border: orgs.data.active_org ? '1px solid var(--surface1)' : '1px solid #f38ba830',
+            cursor: 'pointer',
+            background: 'transparent',
+            color: orgs.data.active_org ? 'var(--overlay1)' : '#f38ba8',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Building2 size={17} />
+        </button>
 
         {/* Project manager */}
         <ProjectManager
@@ -407,6 +478,7 @@ export default function App() {
           {view === 'connectivity' && <ConnectivityPanel data={connectivity.data} loading={connectivity.loading} onRefresh={connectivity.refresh} />}
           {view === 'net-stats' && <NetStats />}
           {view === 'ai' && <AiCentral />}
+          {view === 'wizard' && <WizardConfig />}
         </div>
 
         {/* ── Right sidebar (detail / device cards) ───────────────── */}
@@ -527,6 +599,7 @@ export default function App() {
           </div>
         </div>
 
+
         {/* Sidebar toggle */}
         <button
           onClick={() => setSidebarOpen(o => !o)}
@@ -603,6 +676,32 @@ export default function App() {
         />
       )}
 
+      {/* ── Floating Wizard panel ─────────────────────────────────── */}
+      {wizardOpen && (
+        <FloatingWizardPanel
+          context={
+            view === 'builder' || view === 'topology' || view === 'nodes'
+              ? JSON.stringify(topology ?? {})
+              : view === 'net-manager'
+              ? JSON.stringify({ network_defs: topology?.network_defs ?? [] })
+              : view === 'drivers'
+              ? JSON.stringify({ drivers: drivers.map(d => ({ name: d.name, label: d.label, vendor: d.vendor })) })
+              : JSON.stringify(topology ?? {})
+          }
+          contextLabel={
+            view === 'builder'     ? 'Builder'
+            : view === 'topology'  ? 'Topology'
+            : view === 'nodes'     ? 'Nodes'
+            : view === 'net-manager' ? 'Network Manager'
+            : view === 'drivers'   ? 'Drivers'
+            : 'Topology'
+          }
+          onClose={() => setWizardOpen(false)}
+          onOpenConfig={() => { setWizardOpen(false); setView('wizard') }}
+          onBusyChange={setWizardBusy}
+        />
+      )}
+
       {/* ── Floating JSON editor (topology source) ───────────────── */}
       {jsonEditor && (
         <FloatingJsonEditor
@@ -621,6 +720,23 @@ export default function App() {
           onReload={refreshAll}
         />
       )}
+
+      {/* ── Org selector overlay ──────────────────────────────────── */}
+      {showOrgSelector && (
+        <OrgSelector
+          orgs={orgs.data.orgs}
+          activeOrgId={orgs.data.active_org}
+          onActivate={async (id) => {
+            await orgs.activate(id)
+            projects.refresh()
+            setShowOrgSelector(false)
+          }}
+          onCreate={orgs.createOrg}
+          onSkip={() => setShowOrgSelector(false)}
+        />
+      )}
+
+      <style>{`@keyframes wizardPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }`}</style>
     </div>
   )
 }

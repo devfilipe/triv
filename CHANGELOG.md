@@ -7,7 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.0.1] - 2026-03-22
+## [0.2.0] - 2026-03-25
+
+### Added
+
+#### Wizard AI Assistant
+- Floating Wizard panel — persistent chat interface docked to the WebUI, sends natural-language tasks to the Wizard agent and renders step-by-step tool call progress
+- `WizardManager` — wizard lifecycle manager: loads a dedicated internal topology (`~/.triv/wizard/`), manages config persistence in `~/.triv/wizard_config.json`, builds tool executors, and runs agent tasks
+- Wizard internal topology with three built-in nodes: `triv-wizard-llm` (LLM endpoint), `triv-wizard-agent` (agentic reasoning loop), `triv-wizard-app` (REST API client for topology operations)
+- `WizardConfig` canvas — ReactFlow view of the wizard internal topology; click any node to edit capabilities, run actions, or configure the agent
+- `wizard_app.py` — CLI tool exposing topology CRUD operations (`create-node`, `update-node`, `delete-node`, `add-link`, `remove-link`, `set-node-capabilities`, `run-node-action`, `start/stop/restart-node`, network and project management, and more) as agent-callable tools
+- Wizard REST API (`/api/wizard/*`): config CRUD, task execution, node capabilities read/write, action execution, topology AI-tool listing
+- `WizardConfig` right panel: per-node capability editor, inline action runner with output display, User Instructions textarea, and Danger Area for capability group toggles
+- Topology AI Tools support — wizard agent can call AI-tool-enabled actions from user topology nodes when the `topology_ai_tools` capability group is enabled; `GET /api/wizard/topology-tools` returns available tools grouped by node and driver
+- "List Topology Tools" action in the agent node's Actions section — opens a modal showing all AI-tool-enabled actions from the user topology, grouped by node > driver > action
+
+#### Destructive Action Confirmation Gate
+- `_DESTRUCTIVE_ACTIONS` set in `WizardManager` — defines which tool calls require explicit user confirmation before execution (`delete-node`, `remove-link`, `delete-network`, `undeploy-network`, `delete-secret`, `set-node-capabilities`, `stop-node`, `run-node-action`)
+- Confirmation flow in `FloatingWizardPanel`: when a destructive action is blocked, an orange banner lists the pending actions with Confirm / Cancel buttons; confirmed action IDs are re-sent with the next request
+- `run_task()` returns `confirmation_required` and `blocked_actions` when destructive ops are intercepted
+
+#### Organizations
+- Organizations system — create and manage orgs; projects can be assigned to an org and filtered by active org
+- `OrgSelector` component in the top navigation bar — switch active org to filter the project list
+- `GET/POST /api/orgs`, `PUT /api/orgs/{id}`, `DELETE /api/orgs/{id}` endpoints
+- `POST /api/projects/{id}/move` — move a project to a different org
+
+### Changed
+- `generic-driver-agent`: handle `content: null` responses from reasoning models (e.g. `deepseek-reasoner`) — falls back to `reasoning_content`, then issues a follow-up summary call; system prompt instructs the model to always end with a text response
+- `generic-driver-llm`: added Ollama default base URL; increased HTTP timeout from 120 s to 300 s
+- `CapabilitiesModal` now accepts `apiBase` and `lockedDrivers` props, enabling reuse for wizard nodes with a separate API prefix and driver lock
+- `projects` list response includes `active_org` field; project list is filtered by active org when one is set
+
+## [0.1.0] - 2026-03-22
 
 ### Added
 
@@ -69,5 +101,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WebSocket live event bus for real-time topology and status updates
 - Plugin system with `PluginBase` and `PluginManager` for backend extensions
 
-[Unreleased]: https://github.com/devfilipe/triv/compare/v0.0.1...HEAD
-[0.0.1]: https://github.com/devfilipe/triv/releases/tag/v0.0.1
+[Unreleased]: https://github.com/devfilipe/triv/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/devfilipe/triv/compare/0.1.0...0.2.0
+[0.1.0]: https://github.com/devfilipe/triv/releases/tag/0.1.0

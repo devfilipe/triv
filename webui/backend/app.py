@@ -63,6 +63,8 @@ from routers.websockets import router as websockets_router
 from routers.netstats import router as netstats_router
 from routers.ai import router as ai_router
 from routers.secrets import router as secrets_router
+from routers.wizard import router as wizard_router
+from routers.orgs import router as orgs_router
 
 app.include_router(topology_router)
 app.include_router(capabilities_router)
@@ -79,6 +81,8 @@ app.include_router(websockets_router)
 app.include_router(netstats_router)
 app.include_router(ai_router)
 app.include_router(secrets_router)
+app.include_router(wizard_router)
+app.include_router(orgs_router)
 
 # ---------------------------------------------------------------------------
 # 4. Startup event
@@ -96,6 +100,10 @@ def _on_startup():
     # Health check thread
     t = threading.Thread(target=health_check_loop, daemon=True)
     t.start()
+
+    # Initialise wizard topology
+    from wizard_manager import WizardManager
+    WizardManager.init()
 
     # Restore last active project
     saved = _load_projects()

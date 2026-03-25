@@ -47,6 +47,25 @@ ctx: Any = None
 state_tracker = StateTracker()
 
 # ---------------------------------------------------------------------------
+# Wizard state
+# ---------------------------------------------------------------------------
+
+wizard_topology: Any = None          # loaded by WizardManager at startup
+wizard_config: dict = {}             # persisted config (provider, model, enabled, instructions)
+WIZARD_DIR: Path = TOOLS_DIR / "triv" / "wizard"
+WIZARD_TOPOLOGY_FILE: Path = WIZARD_DIR / "projects" / "wizard" / "topology.json"
+WIZARD_CAPS_DIR: Path = WIZARD_DIR / "capabilities"
+WIZARD_APP_SCRIPT: Path = WIZARD_DIR / "wizard_app.py"
+WIZARD_CONFIG_FILE: Path = TRIV_HOME / "wizard_config.json"
+ORGS_DIR: Path = TRIV_HOME / "orgs"
+ORGS_DIR.mkdir(parents=True, exist_ok=True)
+WIZARD_SYSTEM_PROMPT_FILE: Path = WIZARD_DIR / ".system_prompt"
+WIZARD_RULES_FILE: Path = WIZARD_DIR / ".rules"
+
+# URL the backend is reachable at — used by wizard_app.py subprocess
+SERVER_URL: str = os.environ.get("TRIV_API_URL", "http://localhost:8481")
+
+# ---------------------------------------------------------------------------
 # Health check cache
 # ---------------------------------------------------------------------------
 

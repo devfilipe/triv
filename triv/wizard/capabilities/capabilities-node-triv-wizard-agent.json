@@ -1,0 +1,17 @@
+{
+  "drivers": [
+    {
+      "driver": "generic-driver-agent",
+      "driver_args": {
+        "llm_node": "triv-wizard-llm",
+        "max_steps": 8,
+        "max_tool_calls": 20,
+        "context": ""
+      }
+    }
+  ],
+  "actions": [
+    { "$ref": "agent-run", "driver": "generic-driver-agent" },
+    { "$ref": "agent-tools", "driver": "generic-driver-agent" }
+  ]
+}

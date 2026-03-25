@@ -1,0 +1,63 @@
+{
+  "name": "Wizard",
+  "version": "1.0",
+  "description": "Internal triv Wizard topology — managed by WizardManager",
+  "nodes": [
+    {
+      "id": "triv-wizard-llm",
+      "runtime": "llm",
+      "category": "llm",
+      "driver": "generic",
+      "env": "capabilities-node-triv-wizard-llm.json",
+      "interfaces": [
+        { "id": "api", "type": "internal", "label": "API" }
+      ],
+      "properties": {
+        "label": "Wizard LLM",
+        "x": 100,
+        "y": 200,
+        "internal": true,
+        "locked_drivers": true
+      }
+    },
+    {
+      "id": "triv-wizard-agent",
+      "runtime": "agent",
+      "category": "agent",
+      "driver": "generic",
+      "env": "capabilities-node-triv-wizard-agent.json",
+      "interfaces": [
+        { "id": "llm", "type": "internal", "label": "LLM" }
+      ],
+      "properties": {
+        "label": "Wizard Agent",
+        "x": 350,
+        "y": 200,
+        "internal": true,
+        "locked_drivers": true
+      }
+    },
+    {
+      "id": "triv-wizard-app",
+      "runtime": "app",
+      "category": "generic",
+      "driver": "generic",
+      "env": "capabilities-node-triv-wizard-app.json",
+      "properties": {
+        "label": "Wizard App",
+        "x": 600,
+        "y": 200,
+        "internal": true
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "link-wizard-llm-agent",
+      "type": "logical",
+      "source": { "node": "triv-wizard-llm", "interface": "api" },
+      "target": { "node": "triv-wizard-agent", "interface": "llm" }
+    }
+  ],
+  "network_defs": []
+}

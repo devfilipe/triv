@@ -1,0 +1,20 @@
+{
+  "drivers": [
+    {
+      "driver": "generic-driver-llm",
+      "driver_args": {
+        "provider": "deepseek",
+        "model": "deepseek-reasoner",
+        "base_url": "https://api.deepseek.com/v1",
+        "api_key": "",
+        "temperature": 0.3,
+        "max_tokens": 4096
+      }
+    }
+  ],
+  "actions": [
+    { "$ref": "llm-status", "driver": "generic-driver-llm" },
+    { "$ref": "llm-list-models", "driver": "generic-driver-llm" },
+    { "$ref": "llm-chat", "driver": "generic-driver-llm" }
+  ]
+}

@@ -124,11 +124,33 @@ def get_projects():
     data = _load_projects()
     active = data.get("active", "")
     last_active = data.get("last_active", "")
+    active_org = data.get("active_org", "")
     projects = data.get("projects", [])
+
+    # Filter by active org if set
+    if active_org:
+        try:
+            import shared as _shared
+            org_file = _shared.ORGS_DIR / f"{active_org}.json"
+            if org_file.exists():
+                org_data = json.loads(org_file.read_text())
+                org_vendors = org_data.get("vendors", [])
+                vendors_root = _shared.TRIV_HOME / "vendors"
+                allowed_prefixes = [str(vendors_root / v) + "/" for v in org_vendors]
+                # Also allow exact match (project at vendor root)
+                allowed_exact = [str(vendors_root / v) for v in org_vendors]
+                projects = [
+                    p for p in projects
+                    if any(p["path"].startswith(pfx) for pfx in allowed_prefixes)
+                    or p["path"] in allowed_exact
+                ]
+        except Exception:
+            pass
+
     for p in projects:
         p["active"] = p["id"] == active
         p["has_topology"] = bool(_find_topology_files(p["path"]))
-    return {"active": active, "last_active": last_active, "projects": projects}
+    return {"active": active, "last_active": last_active, "active_org": active_org, "projects": projects}
 
 
 @router.post("/projects")
@@ -454,3 +476,43 @@ def create_project(body: dict = Body(...)):
         "path": str(project_path),
         "topology_file": str(topo_file),
     }
+
+
+@router.post("/projects/{project_id}/move")
+def move_project(project_id: str, body: dict = Body(...)):
+    """Move a project directory to a new parent and update its registered path."""
+    new_parent = (body.get("parent") or "").strip()
+    if not new_parent:
+        raise HTTPException(400, "parent is required")
+
+    data = _load_projects()
+    proj = next((p for p in data["projects"] if p["id"] == project_id), None)
+    if not proj:
+        raise HTTPException(404, f"Project '{project_id}' not found")
+
+    old_path = Path(proj["path"])
+    new_parent_path = Path(new_parent)
+    if not new_parent_path.is_dir():
+        raise HTTPException(400, f"Parent directory does not exist: {new_parent}")
+
+    new_path = new_parent_path / old_path.name
+    if new_path.exists():
+        raise HTTPException(409, f"Destination already exists: {new_path}")
+
+    try:
+        shutil.move(str(old_path), str(new_path))
+    except Exception as e:
+        raise HTTPException(500, f"Failed to move directory: {e}")
+
+    proj["path"] = str(new_path)
+    _save_projects(data)
+
+    # Update in-memory state if this is the active project
+    if str(old_path) == str(shared.PROJECT_DIR):
+        shared.PROJECT_DIR = str(new_path)
+        os.environ["TOPO_PROJECT_DIR"] = str(new_path)
+        shared.TOPOLOGY_FILE = new_path / "topology.json"
+        if shared.ctx:
+            shared.ctx.project_dir = str(new_path)
+
+    return {"ok": True, "project_id": project_id, "old_path": str(old_path), "new_path": str(new_path)}

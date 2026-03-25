@@ -228,5 +228,6 @@ export interface ProjectDef {
 export interface ProjectsResponse {
   active: string
   last_active?: string
+  active_org?: string
   projects: ProjectDef[]
 }

@@ -161,6 +161,71 @@ export function useDiscoveredLinks() {
   return { data, loading, discover, clear }
 }
 
+// Organizations management
+export interface OrgDef {
+  id: string
+  name: string
+  vendors: string[]
+  active?: boolean
+}
+
+export interface OrgsResponse {
+  orgs: OrgDef[]
+  active_org: string
+}
+
+export function useOrgs() {
+  const [data, setData] = useState<OrgsResponse>({ orgs: [], active_org: '' })
+  const [loading, setLoading] = useState(true)
+
+  const doFetch = useCallback(() => {
+    fetch('/api/orgs')
+      .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+      .then(d => { setData(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { doFetch() }, [doFetch])
+
+  const activate = useCallback(async (orgId: string) => {
+    const res = await fetch(`/api/orgs/${orgId}/activate`, { method: 'POST' })
+    const result = await res.json()
+    if (result.ok) doFetch()
+    return result
+  }, [doFetch])
+
+  const createOrg = useCallback(async (name: string, vendors?: string[]) => {
+    const res = await fetch('/api/orgs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, vendors: vendors || [] }),
+    })
+    const result = await res.json()
+    if (result.ok) doFetch()
+    return result
+  }, [doFetch])
+
+  const updateOrg = useCallback(async (orgId: string, body: { name?: string; add_vendors?: string[]; remove_vendors?: string[] }) => {
+    const res = await fetch(`/api/orgs/${orgId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const result = await res.json()
+    if (result.ok) doFetch()
+    return result
+  }, [doFetch])
+
+  const deleteOrg = useCallback(async (orgId: string) => {
+    const res = await fetch(`/api/orgs/${orgId}`, { method: 'DELETE' })
+    const result = await res.json()
+    if (result.ok) doFetch()
+    return result
+  }, [doFetch])
+
+  return { data, loading, refresh: doFetch, activate, createOrg, updateOrg, deleteOrg }
+}
+
 // Projects management
 export function useProjects() {
   const [data, setData] = useState<ProjectsResponse>({ active: '', last_active: '', projects: [] })
