@@ -1,6 +1,9 @@
 /* triv WebUI — App: main multi-panel layout with Catppuccin dark theme */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import { useAuth } from './AuthContext'
+import LoginPage from './LoginPage'
+import { apiFetch } from './apiFetch'
 import {
   LayoutDashboard, Server, Network, Cpu, Activity,
   Trash2, ChevronLeft, ChevronRight, Zap, Wifi, Edit3, Monitor,
@@ -77,6 +80,13 @@ const APP_ENTRIES: AppEntry[] = [
 ]
 
 export default function App() {
+  const { token } = useAuth()
+  if (!token) return <LoginPage />
+  return <AppContent />
+}
+
+function AppContent() {
+  const { user, logout } = useAuth()
   const [view, setView]                 = useState<View>('topology')
   const [selectedId, setSelectedId]     = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen]   = useState(true)
@@ -94,6 +104,7 @@ export default function App() {
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardEnabled, setWizardEnabled] = useState(false)
   const [wizardBusy, setWizardBusy] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   // Data hooks
   const { data: nodes, refresh: refreshNodes } = useNodes()
@@ -119,7 +130,7 @@ export default function App() {
   }, [orgs.loading, orgs.data.orgs.length, orgs.data.active_org])
 
   useEffect(() => {
-    fetch('/api/wizard/status').then(r => r.json()).then(d => setWizardEnabled(!!d.enabled)).catch(() => {})
+    apiFetch('/api/wizard/status').then(r => r.json()).then(d => setWizardEnabled(!!d.enabled)).catch(() => {})
   }, [view])  // re-check when user navigates away from wizard config
 
   const selectedNode = nodes.find(n => n.id === selectedId) ?? null
@@ -162,7 +173,7 @@ export default function App() {
 
   /** Called after topology CRUD edits — reload backend then refresh all hooks. */
   function handleTopologyMutate() {
-    fetch('/api/topology/reload', { method: 'POST' })
+    apiFetch('/api/topology/reload', { method: 'POST' })
       .then(() => {
         refreshNodes()
         refreshTopology()
@@ -182,7 +193,7 @@ export default function App() {
       'The project will be deactivated.'
     )) return
     setCleaningUp(true)
-    fetch('/api/cleanup', { method: 'POST' })
+    apiFetch('/api/cleanup', { method: 'POST' })
       .then(r => r.json())
       .then(data => {
         if (data.errors?.length) {
@@ -338,7 +349,7 @@ export default function App() {
           forceOpen={forceProjectModal}
           onEditTopology={async () => {
             try {
-              const res = await fetch('/api/topology/source')
+              const res = await apiFetch('/api/topology/source')
               const data = await res.json()
               if (data.ok) {
                 setJsonEditor({ title: 'Topology', content: data.content, filename: data.filename })
@@ -366,6 +377,72 @@ export default function App() {
           <Trash2 size={16} />
         </button>
         )}
+
+        {/* User avatar + logout */}
+        <div style={{ position: 'relative', marginBottom: 8 }}>
+          <button
+            onClick={() => setUserMenuOpen(v => !v)}
+            title={user?.username ?? 'User'}
+            style={{
+              width: 32, height: 32, borderRadius: '50%',
+              border: '1px solid var(--surface1)',
+              cursor: 'pointer',
+              background: userMenuOpen ? 'var(--surface1)' : 'var(--surface0)',
+              color: '#cba6f7',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, fontWeight: 700,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {(user?.username?.[0] ?? '?').toUpperCase()}
+          </button>
+
+          {userMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                onClick={() => setUserMenuOpen(false)}
+              />
+              {/* Dropdown */}
+              <div style={{
+                position: 'absolute', left: 44, bottom: 0, zIndex: 100,
+                background: 'var(--mantle)',
+                border: '1px solid var(--surface1)',
+                borderRadius: 8,
+                padding: '6px 0',
+                minWidth: 160,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+              }}>
+                <div style={{
+                  padding: '6px 14px 8px',
+                  color: 'var(--subtext0)', fontSize: 11,
+                  borderBottom: '1px solid var(--surface0)',
+                  marginBottom: 4,
+                }}>
+                  <div style={{ color: 'var(--text)', fontWeight: 600, fontSize: 13 }}>
+                    {user?.username}
+                  </div>
+                  <div style={{ textTransform: 'capitalize' }}>{user?.role}</div>
+                </div>
+                <button
+                  onClick={() => { setUserMenuOpen(false); logout() }}
+                  style={{
+                    width: '100%', padding: '7px 14px',
+                    background: 'none', border: 'none',
+                    color: '#f38ba8', fontSize: 13,
+                    cursor: 'pointer', textAlign: 'left',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface0)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >
+                  Sign out
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </nav>
 
       {/* ── Main content area ────────────────────────────────────── */}
@@ -709,7 +786,7 @@ export default function App() {
           content={jsonEditor.content}
           filename={jsonEditor.filename}
           onSave={async (content) => {
-            const res = await fetch('/api/topology/source', {
+            const res = await apiFetch('/api/topology/source', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ content }),

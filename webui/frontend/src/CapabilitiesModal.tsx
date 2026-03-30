@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — CapabilitiesModal: capabilities editor as a pop-up modal.
    Extracted from NodeCapabilities; opened from BuilderCanvas properties panel. */
 
@@ -134,11 +135,11 @@ function ModelField({ value, onChange, provider, baseUrl }: {
     setFetching(true)
     try {
       if (provider === 'ollama') {
-        const r = await fetch(`${base}/api/tags`)
+        const r = await apiFetch(`${base}/api/tags`)
         const data = await r.json()
         setDynamicModels((data.models ?? []).map((m: any) => String(m.name)))
       } else {
-        const r = await fetch(`${base}/v1/models`)
+        const r = await apiFetch(`${base}/v1/models`)
         const data = await r.json()
         setDynamicModels((data.data ?? []).map((m: any) => String(m.id)))
       }
@@ -212,7 +213,7 @@ function ActionMultiselectField({ value, onChange, nodeId, catalog, apiBase = '/
   const fetchActions = React.useCallback(async () => {
     setFetching(true)
     try {
-      const nodesData: any[] = await fetch(apiBase).then(r => r.json())
+      const nodesData: any[] = await apiFetch(apiBase).then(r => r.json())
       const nd = Array.isArray(nodesData) ? nodesData.find(n => n.id === nodeId) : null
       if (nd?.actions) {
         const groupMap = new Map<string, { id: string; label: string }[]>()
@@ -311,8 +312,8 @@ function AgentToolMultiselectField({ value, onChange, nodeId, apiBase = '/api/no
     setFetching(true)
     try {
       const [toolsRes, nodesRes] = await Promise.all([
-        fetch(`${apiBase}/${nodeId}/agent/tools`),
-        fetch(apiBase),
+        apiFetch(`${apiBase}/${nodeId}/agent/tools`),
+        apiFetch(apiBase),
       ])
       const toolsData = await toolsRes.json()
       const nodesData: any[] = await nodesRes.json()
@@ -409,7 +410,7 @@ function NodeSelectField({ value, onChange, filterRuntime, apiBase = '/api/nodes
   const fetchNodes = React.useCallback(async () => {
     setFetching(true)
     try {
-      const r = await fetch(apiBase)
+      const r = await apiFetch(apiBase)
       const data: any[] = await r.json()
       setNodes(
         data
@@ -538,16 +539,16 @@ export default function CapabilitiesModal({ node, onClose, onRefresh, apiBase = 
 
   // Load catalog + domain templates + secrets once
   useEffect(() => {
-    fetch('/api/drivers/catalog').then(r => r.json()).then(setCatalog).catch(() => {})
-    fetch('/api/templates/libvirt/domains').then(r => r.json()).then(setDomainTemplates).catch(() => {})
-    fetch('/api/secrets').then(r => r.json()).then(setSecrets).catch(() => {})
+    apiFetch('/api/drivers/catalog').then(r => r.json()).then(setCatalog).catch(() => {})
+    apiFetch('/api/templates/libvirt/domains').then(r => r.json()).then(setDomainTemplates).catch(() => {})
+    apiFetch('/api/secrets').then(r => r.json()).then(setSecrets).catch(() => {})
   }, [])
 
   // Load capabilities when catalog is ready
   const loadCaps = useCallback(async (cat: CatalogDriver[]) => {
     setLoading(true); setError(''); setSuccess(''); setCollapsedDrivers(new Set())
     try {
-      const res = await fetch(`${apiBase}/${nodeId}/capabilities`)
+      const res = await apiFetch(`${apiBase}/${nodeId}/capabilities`)
       if (!res.ok) throw new Error(await res.text())
       const data: CapabilitiesData = await res.json()
       setCaps(data)
@@ -586,7 +587,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh, apiBase = 
   const handleInit = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${apiBase}/${nodeId}/capabilities/init`, { method: 'POST' })
+      const res = await apiFetch(`${apiBase}/${nodeId}/capabilities/init`, { method: 'POST' })
       const data = await res.json()
       if (data.ok) {
         setSuccess(data.created ? 'Capabilities file created!' : 'Already exists')
@@ -613,7 +614,7 @@ export default function CapabilitiesModal({ node, onClose, onRefresh, apiBase = 
       })
       const body: any = { drivers, actions: actionsToSave }
       if (health) body.health = health
-      const res = await fetch(`${apiBase}/${nodeId}/capabilities`, {
+      const res = await apiFetch(`${apiBase}/${nodeId}/capabilities`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })

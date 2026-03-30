@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — NodeDrivers: browse all drivers (json-driver + py-driver) from catalog,
    view details, edit driver_args_schema, create/edit actions.
    - json-driver: actions are JSON objects, editable inline.
@@ -271,7 +272,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
   const fetchCatalog = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/drivers/catalog')
+      const res = await apiFetch('/api/drivers/catalog')
       if (res.ok) setCatalog(await res.json())
     } catch {}
     setLoading(false)
@@ -282,7 +283,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
   const handleScaffold = useCallback(async () => {
     setCreating(true); setError(''); setResult(null)
     try {
-      const res = await fetch('/api/drivers/scaffold', {
+      const res = await apiFetch('/api/drivers/scaffold', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scaffoldForm),
@@ -362,7 +363,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
     if (!drv) return
     setSavingSchema(true); setSchemaMsg('')
     try {
-      const res = await fetch(`/api/drivers/catalog/${drv.id}/schema`, {
+      const res = await apiFetch(`/api/drivers/catalog/${drv.id}/schema`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schema: draftSchema }),
@@ -416,7 +417,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
     if (!drv) return
     setSavingActions(true); setActionMsg('')
     try {
-      const res = await fetch(`/api/drivers/catalog/${drv.id}/actions`, {
+      const res = await apiFetch(`/api/drivers/catalog/${drv.id}/actions`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ actions: draftActions }),
@@ -435,7 +436,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
     if (!drv) return
     setPyActionMsg('')
     try {
-      const res = await fetch(`/api/drivers/catalog/${drv.id}/actions/${actionName}`)
+      const res = await apiFetch(`/api/drivers/catalog/${drv.id}/actions/${actionName}`)
       const data = await res.json()
       if (data.ok) {
         setPyActionSource(data.source)
@@ -448,7 +449,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
     if (!drv || !editingPyAction) return
     setSavingPyAction(true); setPyActionMsg('')
     try {
-      const res = await fetch(`/api/drivers/catalog/${drv.id}/actions/${editingPyAction}`, {
+      const res = await apiFetch(`/api/drivers/catalog/${drv.id}/actions/${editingPyAction}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: pyActionSource }),
@@ -474,7 +475,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
     if (!drv) return
     // Check usage first
     try {
-      const usageRes = await fetch(`/api/drivers/catalog/${drv.id}/usage?action=${encodeURIComponent(actionName)}`)
+      const usageRes = await apiFetch(`/api/drivers/catalog/${drv.id}/usage?action=${encodeURIComponent(actionName)}`)
       const usageData = await usageRes.json()
       if (usageData.count > 0) {
         const nodeList = usageData.usages.flatMap((u: any) => u.node_ids || [])
@@ -491,7 +492,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
     }
     // Proceed with delete (?force=true to skip server-side usage block)
     try {
-      const res = await fetch(`/api/drivers/catalog/${drv.id}/actions/${actionName}?force=true`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/drivers/catalog/${drv.id}/actions/${actionName}?force=true`, { method: 'DELETE' })
       const data = await res.json()
       if (res.ok && data.ok) {
         const cleaned = data.cleaned_capabilities?.length || 0
@@ -507,7 +508,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
     if (!drv) return
     // Check usage first
     try {
-      const usageRes = await fetch(`/api/drivers/catalog/${drv.id}/usage`)
+      const usageRes = await apiFetch(`/api/drivers/catalog/${drv.id}/usage`)
       const usageData = await usageRes.json()
       if (usageData.count > 0) {
         const nodeList = usageData.usages.flatMap((u: any) => u.node_ids || [])
@@ -525,7 +526,7 @@ export default function NodeDrivers({ onRefresh, onNavigate }: Props) {
     }
     // Proceed with delete
     try {
-      const res = await fetch(`/api/drivers/catalog/${drv.id}?force=true`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/drivers/catalog/${drv.id}?force=true`, { method: 'DELETE' })
       const data = await res.json()
       if (res.ok && data.ok) {
         setSelectedDriver(null)

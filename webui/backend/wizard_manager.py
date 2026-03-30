@@ -44,35 +44,61 @@ _DEFAULT_CONFIG = {
     },
 }
 
+
 # Tool names follow the agent driver's format: {node_id}__{action_id} with hyphens→underscores
 # node_id = "triv-wizard-app" → "triv_wizard_app"
 def _tool(action_id: str) -> str:
     return f"triv_wizard_app__{action_id}".replace("-", "_")
 
+
 # Tools always available (read + basic topology CRUD)
-_BASE_TOOLS: list[str] = [_tool(a) for a in [
-    "list-nodes", "get-topology-summary",
-    "create-node", "update-node", "update-node-label", "delete-node",
-    "add-link", "remove-link",
-    "list-networks", "list-drivers", "list-projects", "list-orgs",
-    "create-project", "activate-project", "reload-topology",
-    "list-secrets",
-]]
+_BASE_TOOLS: list[str] = [
+    _tool(a)
+    for a in [
+        "list-nodes",
+        "get-topology-summary",
+        "create-node",
+        "update-node",
+        "update-node-label",
+        "delete-node",
+        "add-link",
+        "remove-link",
+        "list-networks",
+        "list-drivers",
+        "list-projects",
+        "list-orgs",
+        "create-project",
+        "activate-project",
+        "reload-topology",
+        "list-secrets",
+    ]
+]
 
 # Extra tools unlocked per Danger Area group
 _GROUP_TOOLS: dict[str, list[str]] = {
     "node_capabilities": [_tool(a) for a in ["get-node-capabilities", "set-node-capabilities"]],
-    "node_actions":      [_tool(a) for a in ["get-node-actions", "run-node-action"]],
-    "node_lifecycle":    [_tool(a) for a in ["start-node", "stop-node", "restart-node"]],
-    "network_ops":       [_tool(a) for a in ["create-network", "assign-node-to-network", "delete-network", "deploy-network", "undeploy-network"]],
-    "secrets":           [_tool(a) for a in ["set-secret", "delete-secret"]],
+    "node_actions": [_tool(a) for a in ["get-node-actions", "run-node-action"]],
+    "node_lifecycle": [_tool(a) for a in ["start-node", "stop-node", "restart-node"]],
+    "network_ops": [
+        _tool(a)
+        for a in [
+            "create-network",
+            "assign-node-to-network",
+            "delete-network",
+            "deploy-network",
+            "undeploy-network",
+        ]
+    ],
+    "secrets": [_tool(a) for a in ["set-secret", "delete-secret"]],
 }
 
 # Actions that modify or destroy data and require explicit user confirmation.
 # Uses raw action IDs (not tool names) since the executor receives action_id.
 _DESTRUCTIVE_ACTIONS: set[str] = {
-    "delete-node", "remove-link",
-    "delete-network", "undeploy-network",
+    "delete-node",
+    "remove-link",
+    "delete-network",
+    "undeploy-network",
     "delete-secret",
     "set-node-capabilities",
     "stop-node",
@@ -84,8 +110,8 @@ _DESTRUCTIVE_ACTIONS: set[str] = {
 # WizardManager
 # ---------------------------------------------------------------------------
 
-class WizardManager:
 
+class WizardManager:
     @staticmethod
     def init() -> None:
         """Load wizard topology + config.  Called once at app startup."""
@@ -141,6 +167,7 @@ class WizardManager:
             return
         try:
             from triv.core import topology as topo_mod
+
             topo = topo_mod.load(str(shared.WIZARD_TOPOLOGY_FILE))
             # Patch env fields to absolute paths in wizard capabilities dir
             for node in topo.nodes:
@@ -198,7 +225,9 @@ class WizardManager:
     @staticmethod
     def _patch_app_caps() -> None:
         """Patch __WIZARD_APP_PATH__ placeholder in triv-wizard-app capabilities."""
-        app_node = shared.wizard_topology.get_node("triv-wizard-app") if shared.wizard_topology else None
+        app_node = (
+            shared.wizard_topology.get_node("triv-wizard-app") if shared.wizard_topology else None
+        )
         if not app_node or not app_node.env:
             return
         caps_path = Path(app_node.env)
@@ -214,6 +243,7 @@ class WizardManager:
         """Load a capabilities file from an absolute path."""
         try:
             from triv.core import env as env_mod
+
             return env_mod.load_env(node_env_path, str(shared.WIZARD_CAPS_DIR))
         except Exception:
             return {"drivers": [], "actions": []}
@@ -221,7 +251,9 @@ class WizardManager:
     @staticmethod
     def _get_llm_env() -> dict:
         """Return LLM env data with current wizard config merged in."""
-        llm_node = shared.wizard_topology.get_node("triv-wizard-llm") if shared.wizard_topology else None
+        llm_node = (
+            shared.wizard_topology.get_node("triv-wizard-llm") if shared.wizard_topology else None
+        )
         if not llm_node:
             return {}
         env = WizardManager._load_wizard_env(llm_node.env)
@@ -261,7 +293,9 @@ class WizardManager:
     @staticmethod
     def _get_agent_env(context: str, instructions: str) -> dict:
         """Return agent env data with context + instructions injected."""
-        agent_node = shared.wizard_topology.get_node("triv-wizard-agent") if shared.wizard_topology else None
+        agent_node = (
+            shared.wizard_topology.get_node("triv-wizard-agent") if shared.wizard_topology else None
+        )
         if not agent_node:
             return {}
         env = WizardManager._load_wizard_env(agent_node.env)
@@ -288,6 +322,7 @@ class WizardManager:
         parts: list[str] = []
         try:
             from routers.projects import _load_projects
+
             proj_data = _load_projects()
             active_org = proj_data.get("active_org", "")
             if active_org and shared.ORGS_DIR:
@@ -333,7 +368,9 @@ class WizardManager:
     @staticmethod
     def _get_app_env() -> dict:
         """Return triv-wizard-app env with __WIZARD_APP_PATH__ resolved."""
-        app_node = shared.wizard_topology.get_node("triv-wizard-app") if shared.wizard_topology else None
+        app_node = (
+            shared.wizard_topology.get_node("triv-wizard-app") if shared.wizard_topology else None
+        )
         if not app_node or not app_node.env:
             return {"drivers": [], "actions": []}
         env = WizardManager._load_wizard_env(app_node.env)
@@ -498,20 +535,21 @@ class WizardManager:
 
             props = getattr(n, "properties", {}) or {}
             node_label = props.get("label") or n.id
-            drivers_out = [
-                {"driver_id": did, "actions": acts}
-                for did, acts in drv_map.items()
-            ]
-            result.append({
-                "node_id": n.id,
-                "node_label": node_label,
-                "drivers": drivers_out,
-            })
+            drivers_out = [{"driver_id": did, "actions": acts} for did, acts in drv_map.items()]
+            result.append(
+                {
+                    "node_id": n.id,
+                    "node_label": node_label,
+                    "drivers": drivers_out,
+                }
+            )
 
         return result
 
     @staticmethod
-    def _make_tool_executor(confirmed_actions: set[str] | None = None, blocked_log: list[dict] | None = None):
+    def _make_tool_executor(
+        confirmed_actions: set[str] | None = None, blocked_log: list[dict] | None = None
+    ):
         """Return a callable that executes tool actions via shell.
 
         Handles both wizard-app actions (subprocess) and user topology node
@@ -534,6 +572,7 @@ class WizardManager:
             if _topo_exec is None:
                 try:
                     from routers.nodes import _make_tool_executor as _mk
+
                     _topo_exec = _mk()
                 except Exception:
                     pass
@@ -542,7 +581,9 @@ class WizardManager:
         def _execute(node_id: str, action_id: str, payload: dict | None = None) -> dict:
             # Gate: block destructive actions that haven't been confirmed
             if action_id in _DESTRUCTIVE_ACTIONS and action_id not in _confirmed:
-                _blocked.append({"action_id": action_id, "node_id": node_id, "payload": payload or {}})
+                _blocked.append(
+                    {"action_id": action_id, "node_id": node_id, "payload": payload or {}}
+                )
                 return {
                     "ok": False,
                     "requires_confirmation": True,
@@ -564,14 +605,19 @@ class WizardManager:
                 return {"ok": False, "error": "Wizard topology not loaded"}
             node = shared.wizard_topology.get_node(node_id)
             if not node:
-                return {"ok": False, "error": f"Node '{node_id}' not found in wizard or project topology"}
+                return {
+                    "ok": False,
+                    "error": f"Node '{node_id}' not found in wizard or project topology",
+                }
 
             # Only triv-wizard-app executes shell actions
             if node_id != "triv-wizard-app":
                 return {"ok": False, "error": f"Node '{node_id}' is not executable as a tool"}
 
             env_data = WizardManager._get_app_env()
-            action = next((a for a in env_data.get("actions", []) if a.get("id") == action_id), None)
+            action = next(
+                (a for a in env_data.get("actions", []) if a.get("id") == action_id), None
+            )
             if not action:
                 return {"ok": False, "error": f"Action '{action_id}' not found on wizard-app"}
 
@@ -598,13 +644,18 @@ class WizardManager:
                 stderr = result.stderr.strip()
 
                 if result.returncode != 0:
-                    return {"ok": False, "output": stdout or stderr,
-                            "error": stderr or f"exit code {result.returncode}"}
+                    return {
+                        "ok": False,
+                        "output": stdout or stderr,
+                        "error": stderr or f"exit code {result.returncode}",
+                    }
 
                 # Try to parse JSON output for structured results
                 try:
                     parsed = json.loads(stdout)
-                    output = json.dumps(parsed, indent=2) if isinstance(parsed, (dict, list)) else stdout
+                    output = (
+                        json.dumps(parsed, indent=2) if isinstance(parsed, (dict, list)) else stdout
+                    )
                     ok = parsed.get("ok", True) if isinstance(parsed, dict) else True
                     return {"ok": ok, "output": output}
                 except (json.JSONDecodeError, AttributeError):
@@ -654,6 +705,7 @@ class WizardManager:
 
         try:
             from triv.drivers.generic_driver_agent import GenericAgentDriver
+
             agent = GenericAgentDriver()
             nd = agent_node.to_dict()
             result = agent.run_command(
@@ -704,6 +756,7 @@ class WizardManager:
 # WizardTopologyView — wraps the wizard topology so that the agent driver
 # uses wizard-specific env data for the LLM node lookup.
 # ---------------------------------------------------------------------------
+
 
 class _WizardTopologyView:
     """Thin wrapper around wizard_topology that merges user topology nodes

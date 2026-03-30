@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — FloatingTaskPanel: agent task input + output log */
 
 import React, { useState, useRef, useEffect } from 'react'
@@ -71,7 +72,7 @@ export default function FloatingTaskPanel({ nodeId, title, onClose }: Props) {
     if (!text || loading) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/nodes/${nodeId}/action/run-task`, {
+      const res = await apiFetch(`/api/nodes/${nodeId}/action/run-task`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task: text }),

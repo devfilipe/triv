@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — NodeCapabilities: manage capabilities (env) files per node.
    Handles driver selection (from catalog), driver_args (schema-guided),
    action refs (from selected drivers), and health config.
@@ -110,15 +111,15 @@ export default function NodeCapabilities({ nodes, onRefresh, onNavigate }: Props
 
   // Load driver catalog once
   useEffect(() => {
-    fetch('/api/drivers/catalog').then(r => r.json()).then(setCatalog).catch(() => {})
-    fetch('/api/templates/libvirt/domains').then(r => r.json()).then(setDomainTemplates).catch(() => {})
+    apiFetch('/api/drivers/catalog').then(r => r.json()).then(setCatalog).catch(() => {})
+    apiFetch('/api/templates/libvirt/domains').then(r => r.json()).then(setDomainTemplates).catch(() => {})
   }, [])
 
   // Load capabilities when node selected
   const loadCaps = useCallback(async (nodeId: string) => {
     setLoading(true); setError(''); setSuccess(''); setCollapsedDrivers(new Set())
     try {
-      const res = await fetch(`/api/nodes/${nodeId}/capabilities`)
+      const res = await apiFetch(`/api/nodes/${nodeId}/capabilities`)
       if (!res.ok) throw new Error(await res.text())
       const data: CapabilitiesData = await res.json()
       setCaps(data)
@@ -162,7 +163,7 @@ export default function NodeCapabilities({ nodes, onRefresh, onNavigate }: Props
     if (!selectedNodeId) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/nodes/${selectedNodeId}/capabilities/init`, { method: 'POST' })
+      const res = await apiFetch(`/api/nodes/${selectedNodeId}/capabilities/init`, { method: 'POST' })
       const data = await res.json()
       if (data.ok) { setSuccess(data.created ? 'Capabilities file created!' : 'Already exists'); loadCaps(selectedNodeId); onRefresh() }
     } catch (e: any) { setError(e.message) }
@@ -188,7 +189,7 @@ export default function NodeCapabilities({ nodes, onRefresh, onNavigate }: Props
       })
       const body: any = { drivers, actions: actionsToSave }
       if (health) body.health = health
-      const res = await fetch(`/api/nodes/${selectedNodeId}/capabilities`, {
+      const res = await apiFetch(`/api/nodes/${selectedNodeId}/capabilities`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })

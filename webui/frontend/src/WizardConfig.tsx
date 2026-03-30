@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — WizardConfig: ReactFlow canvas for the built-in AI Wizard */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
@@ -177,9 +178,9 @@ export default function WizardConfig() {
   const [topoToolsLoading, setTopoToolsLoading] = useState(false)
 
   const fetchAll = useCallback(() => {
-    fetch('/api/wizard/config').then(r => r.json()).then(setConfig)
-    fetch('/api/wizard/status').then(r => r.json()).then(setStatus)
-    fetch('/api/wizard/nodes').then(r => r.json()).then(setNodes)
+    apiFetch('/api/wizard/config').then(r => r.json()).then(setConfig)
+    apiFetch('/api/wizard/status').then(r => r.json()).then(setStatus)
+    apiFetch('/api/wizard/nodes').then(r => r.json()).then(setNodes)
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -188,7 +189,7 @@ export default function WizardConfig() {
     setNodeActions([])
     setActionResult(null)
     if (!selectedId) return
-    fetch(`/api/wizard/nodes/${selectedId}/actions`)
+    apiFetch(`/api/wizard/nodes/${selectedId}/actions`)
       .then(r => r.json())
       .then(data => setNodeActions(Array.isArray(data) ? data : []))
       .catch(() => setNodeActions([]))
@@ -199,7 +200,7 @@ export default function WizardConfig() {
     setRunningAction(actionId)
     setActionResult(null)
     try {
-      const res = await fetch(`/api/wizard/nodes/${selectedId}/actions/${actionId}`, {
+      const res = await apiFetch(`/api/wizard/nodes/${selectedId}/actions/${actionId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       })
@@ -216,7 +217,7 @@ export default function WizardConfig() {
     setTopoToolsLoading(true)
     setTopoToolsOpen(true)
     try {
-      const res = await fetch('/api/wizard/topology-tools')
+      const res = await apiFetch('/api/wizard/topology-tools')
       const data = await res.json()
       setTopoTools(Array.isArray(data) ? data : [])
     } catch {
@@ -235,7 +236,7 @@ export default function WizardConfig() {
     if (!config) return
     setSaving(true)
     try {
-      const res  = await fetch('/api/wizard/config', {
+      const res  = await apiFetch('/api/wizard/config', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           enabled: config.enabled,

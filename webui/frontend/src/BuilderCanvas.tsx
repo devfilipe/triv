@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — BuilderCanvas: Visual topology builder with drag-and-drop
    node creation, click-to-connect interfaces, and live property editing.
    Persists positions and topology changes back to topology.json.        */
@@ -46,6 +47,11 @@ interface PaletteItem {
   description: string
   /** json-driver id to auto-import into capabilities (null = blank node) */
   defaultJsonDriver?: string | null
+  /** Full capabilities template — overrides defaultJsonDriver when set */
+  defaultCapabilities?: {
+    drivers: { driver: string; driver_args: Record<string, any> }[]
+    actions: { '$ref': string; driver: string; origin: string }[]
+  } | null
   /** Default interfaces to create with the node */
   defaultInterfaces?: { id: string; type: string; label: string; direction?: string }[]
 }
@@ -80,6 +86,47 @@ const PALETTE: PaletteItem[] = [
     label: 'LLM Node', icon: 'Cpu', color: '#cba6f7',
     description: 'LLM service — Ollama, OpenAI, Anthropic, Groq',
     defaultJsonDriver: 'generic-driver-llm',
+    defaultInterfaces: [{ id: 'api', type: 'internal', label: 'API' }],
+  },
+  {
+    category: 'llm', runtime: 'docker', driver: 'generic',
+    label: 'Ollama Node', icon: 'Cpu', color: '#94e2d5',
+    description: 'Ollama LLM container — pre-configured, ready to pull & run models',
+    defaultCapabilities: {
+      drivers: [
+        {
+          driver: 'generic-driver-container',
+          driver_args: {
+            image: 'ollama/ollama',
+            'container-name': 'ollama',
+            volumes: 'ollama:/root/.ollama',
+            ports: '11434:11434',
+          },
+        },
+        {
+          driver: 'generic-driver-ollama',
+          driver_args: { base_url: 'http://localhost:11434', model: '', temperature: 0.7, num_predict: 2048 },
+        },
+      ],
+      actions: [
+        { '$ref': 'container-create',          driver: 'generic-driver-container', origin: 'native' },
+        { '$ref': 'container-start',           driver: 'generic-driver-container', origin: 'native' },
+        { '$ref': 'container-stop',            driver: 'generic-driver-container', origin: 'native' },
+        { '$ref': 'container-restart',         driver: 'generic-driver-container', origin: 'native' },
+        { '$ref': 'container-rm',              driver: 'generic-driver-container', origin: 'native' },
+        { '$ref': 'console-sh',                driver: 'generic-driver-container', origin: 'native' },
+        { '$ref': 'logs',                      driver: 'generic-driver-container', origin: 'native' },
+        { '$ref': 'container-status',          driver: 'generic-driver-container', origin: 'native' },
+        { '$ref': 'ollama-check-connection',   driver: 'generic-driver-ollama',    origin: 'native' },
+        { '$ref': 'ollama-list-models',        driver: 'generic-driver-ollama',    origin: 'native' },
+        { '$ref': 'ollama-pull',               driver: 'generic-driver-ollama',    origin: 'native' },
+        { '$ref': 'ollama-ps',                 driver: 'generic-driver-ollama',    origin: 'native' },
+        { '$ref': 'ollama-chat',               driver: 'generic-driver-ollama',    origin: 'native' },
+        { '$ref': 'ollama-show',               driver: 'generic-driver-ollama',    origin: 'native' },
+        { '$ref': 'ollama-delete',             driver: 'generic-driver-ollama',    origin: 'native' },
+        { '$ref': 'ollama-status',             driver: 'generic-driver-ollama',    origin: 'native' },
+      ],
+    },
     defaultInterfaces: [{ id: 'api', type: 'internal', label: 'API' }],
   },
   {
@@ -497,7 +544,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
       positions[n.id] = { x: Math.round(n.position.x), y: Math.round(n.position.y) }
     })
     try {
-      await fetch('/api/topology/nodes/positions', {
+      await apiFetch('/api/topology/nodes/positions', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ positions }),
@@ -517,7 +564,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
   /* ── Network node position save ─────────────────────────────── */
   const saveNetworkPosition = useCallback(async (networkId: string, x: number, y: number) => {
     try {
-      await fetch(`/api/v2/networks/${networkId}/position`, {
+      await apiFetch(`/api/v2/networks/${networkId}/position`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ x: Math.round(x), y: Math.round(y) }),
@@ -592,7 +639,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
       if (node.position) body.position = node.position
 
       try {
-        await fetch(`/api/topology/nodes/${src}`, {
+        await apiFetch(`/api/topology/nodes/${src}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -632,7 +679,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
     if (node.position) body.position = node.position
 
     try {
-      await fetch(`/api/topology/nodes/${nodeId}`, {
+      await apiFetch(`/api/topology/nodes/${nodeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -660,17 +707,27 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
     body.position = { x: maxX + 280, y: 80 }
 
     try {
-      const resp = await fetch('/api/topology/nodes', {
+      const resp = await apiFetch('/api/topology/nodes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       const data = await resp.json()
       if (data.ok && data.id) {
-        // Auto-create capabilities from the default json-driver
-        if (item.defaultJsonDriver) {
+        // Auto-create capabilities — use explicit template or auto-import from json-driver
+        if (item.defaultCapabilities) {
           try {
-            const catResp = await fetch('/api/drivers/catalog')
+            await apiFetch(`/api/nodes/${data.id}/capabilities`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(item.defaultCapabilities),
+            })
+          } catch (e) {
+            console.error('Failed to create default capabilities:', e)
+          }
+        } else if (item.defaultJsonDriver) {
+          try {
+            const catResp = await apiFetch('/api/drivers/catalog')
             const catalog = await catResp.json()
             const drv = catalog.find((d: any) => d.id === item.defaultJsonDriver)
             if (drv) {
@@ -681,7 +738,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
                   driver: item.defaultJsonDriver,
                   origin: 'native',
                 }))
-              await fetch(`/api/nodes/${data.id}/capabilities`, {
+              await apiFetch(`/api/nodes/${data.id}/capabilities`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -706,7 +763,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
   const handleDeleteNode = useCallback(async (id: string) => {
     if (!confirm(`Delete node "${id}" and all its links?`)) return
     try {
-      await fetch(`/api/topology/nodes/${id}`, { method: 'DELETE' })
+      await apiFetch(`/api/topology/nodes/${id}`, { method: 'DELETE' })
       setSelectedNode(null)
       onMutate()
     } catch (e) {
@@ -718,7 +775,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
   const handleDeleteLink = useCallback(async (id: string) => {
     if (!confirm(`Delete link "${id}"?`)) return
     try {
-      await fetch(`/api/topology/links/${id}`, { method: 'DELETE' })
+      await apiFetch(`/api/topology/links/${id}`, { method: 'DELETE' })
       setSelectedEdge(null)
       onMutate()
     } catch (e) {
@@ -740,7 +797,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
       target: { node: newLinkForm.tgtNode, interface: newLinkForm.tgtIface || tgtFallback },
     }
     try {
-      const resp = await fetch('/api/topology/links', {
+      const resp = await apiFetch('/api/topology/links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -790,7 +847,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
     if (orig.position) body.position = orig.position
 
     try {
-      const resp = await fetch(`/api/topology/nodes/${editNodeId}`, {
+      const resp = await apiFetch(`/api/topology/nodes/${editNodeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -820,7 +877,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
     if (node.position) body.position = node.position
 
     try {
-      await fetch(`/api/topology/nodes/${nodeId}`, {
+      await apiFetch(`/api/topology/nodes/${nodeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -839,7 +896,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
     if (node.position) body.position = node.position
 
     try {
-      await fetch(`/api/topology/nodes/${nodeId}`, {
+      await apiFetch(`/api/topology/nodes/${nodeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -866,7 +923,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
     const body: any = { ...node, interfaces: ifaces }
     if (node.position) body.position = node.position
     try {
-      await fetch(`/api/topology/nodes/${nodeId}`, {
+      await apiFetch(`/api/topology/nodes/${nodeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -887,7 +944,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
   const handleUnassignNetwork = useCallback(async (networkId: string) => {
     setBusyNet(networkId)
     try {
-      await fetch('/api/v2/networks/unassign', {
+      await apiFetch('/api/v2/networks/unassign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ network_id: networkId }),
@@ -910,7 +967,7 @@ export default function BuilderCanvas({ nodes, links, onMutate, networkDefs = []
     // Save after reset
     const positions: Record<string, { x: number; y: number }> = {}
     auto.forEach((v, k) => { positions[k] = v })
-    fetch('/api/topology/nodes/positions', {
+    apiFetch('/api/topology/nodes/positions', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ positions }),

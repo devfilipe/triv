@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — AI Central panel */
 
 import React, { useEffect, useState, useCallback } from 'react'
@@ -457,7 +458,7 @@ function SecretsTab({ secrets, onRefresh }: {
     if (!form.value.trim()) { setErr('Value is required'); return }
     setBusy(true); setErr(null)
     try {
-      const res = await fetch(`/api/secrets/${encodeURIComponent(form.name)}`, {
+      const res = await apiFetch(`/api/secrets/${encodeURIComponent(form.name)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: form.name, type: form.type, value: form.value }),
@@ -476,7 +477,7 @@ function SecretsTab({ secrets, onRefresh }: {
     if (!confirm(`Delete secret "${name}"?`)) return
     setBusy(true)
     try {
-      await fetch(`/api/secrets/${encodeURIComponent(name)}`, { method: 'DELETE' })
+      await apiFetch(`/api/secrets/${encodeURIComponent(name)}`, { method: 'DELETE' })
       onRefresh()
     } finally {
       setBusy(false)
@@ -718,7 +719,7 @@ function HistoryTab({ agentNodeIds }: { agentNodeIds: string[] }) {
   const [nodeLabels, setNodeLabels] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    fetch('/api/nodes')
+    apiFetch('/api/nodes')
       .then(r => r.json())
       .then((nodes: any[]) => {
         const m: Record<string, string> = {}
@@ -736,7 +737,7 @@ function HistoryTab({ agentNodeIds }: { agentNodeIds: string[] }) {
     if (!nodeId) return
     setLoading(true)
     try {
-      const data = await fetch(`/api/nodes/${nodeId}/history?limit=100`).then(r => r.json())
+      const data = await apiFetch(`/api/nodes/${nodeId}/history?limit=100`).then(r => r.json())
       setEntries((data.entries ?? []).slice().reverse())
     } catch { setEntries([]) }
     setLoading(false)
@@ -750,7 +751,7 @@ function HistoryTab({ agentNodeIds }: { agentNodeIds: string[] }) {
 
   const handleClear = async () => {
     if (!confirm('Clear history for this node?')) return
-    await fetch(`/api/nodes/${selectedNode}/history`, { method: 'DELETE' })
+    await apiFetch(`/api/nodes/${selectedNode}/history`, { method: 'DELETE' })
     setEntries([])
   }
 
@@ -865,7 +866,7 @@ export default function AiCentral() {
 
   const fetchSecrets = useCallback(async () => {
     try {
-      const data = await fetch('/api/secrets').then(r => r.json())
+      const data = await apiFetch('/api/secrets').then(r => r.json())
       setSecrets(data)
     } catch { /* ignore */ }
   }, [])
@@ -875,8 +876,8 @@ export default function AiCentral() {
     setError(null)
     try {
       const [inv, sys] = await Promise.all([
-        fetch('/api/ai/inventory').then(r => r.json()),
-        fetch('/api/ai/sysinfo').then(r => r.json()),
+        apiFetch('/api/ai/inventory').then(r => r.json()),
+        apiFetch('/api/ai/sysinfo').then(r => r.json()),
       ])
       setInventory(inv)
       setSysinfo(sys)

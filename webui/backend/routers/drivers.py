@@ -604,6 +604,7 @@ def update_driver_actions(driver_id: str, body: dict = Body(...)):
     data["actions"] = new_actions
     with open(target_file, "w") as fh:
         json.dump(data, fh, indent=2)
+    env_mod.clear_actions_cache()
     return {
         "ok": True,
         "driver_id": driver_id,

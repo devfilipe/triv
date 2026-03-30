@@ -26,10 +26,12 @@ router = APIRouter(prefix="/api/wizard", tags=["wizard"])
 # Status
 # ---------------------------------------------------------------------------
 
+
 @router.get("/status")
 def get_wizard_status():
     """Return enabled/loaded state — used by the floating panel on open."""
     from wizard_manager import WizardManager
+
     return WizardManager.get_status()
 
 
@@ -37,10 +39,12 @@ def get_wizard_status():
 # Config
 # ---------------------------------------------------------------------------
 
+
 @router.get("/config")
 def get_wizard_config():
     """Return wizard configuration (enabled, instructions, capability_groups)."""
     from wizard_manager import WizardManager
+
     cfg = WizardManager.get_config()
     return {k: cfg[k] for k in ("enabled", "instructions", "capability_groups") if k in cfg}
 
@@ -49,6 +53,7 @@ def get_wizard_config():
 def save_wizard_config(body: dict = Body(...)):
     """Save wizard configuration.  Re-applies to in-memory topology immediately."""
     from wizard_manager import WizardManager
+
     WizardManager.save_config(body)
     return {"ok": True}
 
@@ -56,6 +61,7 @@ def save_wizard_config(body: dict = Body(...)):
 # ---------------------------------------------------------------------------
 # Task
 # ---------------------------------------------------------------------------
+
 
 @router.post("/task")
 def run_wizard_task(body: dict = Body(...)):
@@ -85,10 +91,12 @@ def run_wizard_task(body: dict = Body(...)):
 # Topology AI Tools listing
 # ---------------------------------------------------------------------------
 
+
 @router.get("/topology-tools")
 def list_topology_tools():
     """Return AI-tool-enabled actions from the user topology, grouped by node and driver."""
     from wizard_manager import WizardManager
+
     return WizardManager.get_topology_tools()
 
 
@@ -96,8 +104,10 @@ def list_topology_tools():
 # Wizard nodes (used by WizardConfig canvas + CapabilitiesModal)
 # ---------------------------------------------------------------------------
 
+
 def _caps_file(node_id: str) -> Path:
     import shared
+
     return shared.WIZARD_CAPS_DIR / f"capabilities-node-{node_id}.json"
 
 
@@ -105,20 +115,23 @@ def _caps_file(node_id: str) -> Path:
 def list_wizard_nodes():
     """Return wizard nodes in the same shape as GET /api/nodes."""
     import shared
+
     topo = shared.wizard_topology
     if topo is None:
         return []
     nodes = []
     for node in topo.nodes:
         props = getattr(node, "properties", {}) or {}
-        nodes.append({
-            "id": node.id,
-            "label": props.get("label") or node.id,
-            "runtime": getattr(node, "runtime", ""),
-            "status": "running",
-            "internal": bool(props.get("internal", False)),
-            "locked_drivers": bool(props.get("locked_drivers", False)),
-        })
+        nodes.append(
+            {
+                "id": node.id,
+                "label": props.get("label") or node.id,
+                "runtime": getattr(node, "runtime", ""),
+                "status": "running",
+                "internal": bool(props.get("internal", False)),
+                "locked_drivers": bool(props.get("locked_drivers", False)),
+            }
+        )
     return nodes
 
 
@@ -133,6 +146,7 @@ def get_wizard_node_capabilities(node_id: str):
     # effective settings even when the JSON template on disk was reset.
     if node_id == "triv-wizard-llm":
         import shared
+
         cfg = shared.wizard_config
         _llm_ids = {"generic-driver-llm", "generic-driver-ollama"}
         for drv in data.get("drivers", []):
@@ -173,13 +187,18 @@ def save_wizard_node_capabilities(node_id: str, body: dict = Body(...)):
     # survive rebuilds.  Must happen BEFORE init() so the reloaded config
     # already contains the latest values.
     from wizard_manager import WizardManager
+
     if node_id == "triv-wizard-llm":
         _llm_ids = {"generic-driver-llm", "generic-driver-ollama"}
         for drv in existing.get("drivers", []):
             cid = drv.get("driver") or drv.get("id") or ""
             if cid in _llm_ids:
                 da = drv.get("driver_args", {})
-                patch = {k: da[k] for k in ("provider", "model", "base_url", "api_key", "credential") if da.get(k)}
+                patch = {
+                    k: da[k]
+                    for k in ("provider", "model", "base_url", "api_key", "credential")
+                    if da.get(k)
+                }
                 if patch:
                     WizardManager.save_config(patch)
                 break
@@ -202,6 +221,7 @@ def list_wizard_node_actions(node_id: str):
     nd = node.to_dict()
     drv = shared.registry.get_or_default(node.driver)
     from wizard_manager import WizardManager
+
     if node_id == "triv-wizard-llm":
         env_data = WizardManager._get_llm_env()
     else:
@@ -209,7 +229,12 @@ def list_wizard_node_actions(node_id: str):
     vm_name = resolve_vm_name(nd, drv, env_data) or nd["id"]
     actions = resolve_node_actions(nd, drv, vm_name, env_data)
     return [
-        {"id": a.get("id"), "label": a.get("label", a.get("id")), "icon": a.get("icon", ""), "type": a.get("type", "")}
+        {
+            "id": a.get("id"),
+            "label": a.get("label", a.get("id")),
+            "icon": a.get("icon", ""),
+            "type": a.get("type", ""),
+        }
         for a in actions
         if a.get("type") == "driver-command"
     ]
@@ -232,6 +257,7 @@ def run_wizard_node_action(node_id: str, action_id: str, payload: dict | None = 
 
     # For the LLM node use WizardManager env so wizard config overrides (model, provider…) apply
     from wizard_manager import WizardManager
+
     if node_id == "triv-wizard-llm":
         env_data = WizardManager._get_llm_env()
     else:
@@ -286,6 +312,7 @@ def run_wizard_node_action(node_id: str, action_id: str, payload: dict | None = 
 def get_wizard_node_tools(node_id: str):
     """Return tools discoverable by a wizard agent node."""
     import shared
+
     if not shared.wizard_topology:
         return {"ok": True, "tools": []}
     try:

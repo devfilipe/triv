@@ -131,6 +131,7 @@ def get_projects():
     if active_org:
         try:
             import shared as _shared
+
             org_file = _shared.ORGS_DIR / f"{active_org}.json"
             if org_file.exists():
                 org_data = json.loads(org_file.read_text())
@@ -140,7 +141,8 @@ def get_projects():
                 # Also allow exact match (project at vendor root)
                 allowed_exact = [str(vendors_root / v) for v in org_vendors]
                 projects = [
-                    p for p in projects
+                    p
+                    for p in projects
                     if any(p["path"].startswith(pfx) for pfx in allowed_prefixes)
                     or p["path"] in allowed_exact
                 ]
@@ -150,7 +152,12 @@ def get_projects():
     for p in projects:
         p["active"] = p["id"] == active
         p["has_topology"] = bool(_find_topology_files(p["path"]))
-    return {"active": active, "last_active": last_active, "active_org": active_org, "projects": projects}
+    return {
+        "active": active,
+        "last_active": last_active,
+        "active_org": active_org,
+        "projects": projects,
+    }
 
 
 @router.post("/projects")
@@ -515,4 +522,9 @@ def move_project(project_id: str, body: dict = Body(...)):
         if shared.ctx:
             shared.ctx.project_dir = str(new_path)
 
-    return {"ok": True, "project_id": project_id, "old_path": str(old_path), "new_path": str(new_path)}
+    return {
+        "ok": True,
+        "project_id": project_id,
+        "old_path": str(old_path),
+        "new_path": str(new_path),
+    }

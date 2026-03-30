@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — Topology CRUD editor (nodes + links) */
 
 import React, { useState, useCallback } from 'react'
@@ -39,13 +40,13 @@ export default function TopologyEditor({ nodes, links, drivers, onMutate }: Prop
     if (!confirm(`Delete node "${id}" and all its links?`)) return
     await act(`/api/topology/nodes/${id}`, undefined)
     // DELETE via fetch directly
-    await fetch(`/api/topology/nodes/${id}`, { method: 'DELETE' })
+    await apiFetch(`/api/topology/nodes/${id}`, { method: 'DELETE' })
     onMutate()
   }
 
   async function handleDeleteLink(id: string) {
     if (!confirm(`Delete link "${id}"?`)) return
-    await fetch(`/api/topology/links/${id}`, { method: 'DELETE' })
+    await apiFetch(`/api/topology/links/${id}`, { method: 'DELETE' })
     onMutate()
   }
 
@@ -99,13 +100,13 @@ export default function TopologyEditor({ nodes, links, drivers, onMutate }: Prop
           onClose={() => setEditTarget(null)}
           onSave={async (data) => {
             if (editTarget.mode === 'create') {
-              await fetch('/api/topology/nodes', {
+              await apiFetch('/api/topology/nodes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
               })
             } else {
-              await fetch(`/api/topology/nodes/${editTarget.id}`, {
+              await apiFetch(`/api/topology/nodes/${editTarget.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
@@ -122,7 +123,7 @@ export default function TopologyEditor({ nodes, links, drivers, onMutate }: Prop
           nodes={nodes}
           onClose={() => setEditTarget(null)}
           onSave={async (data) => {
-            await fetch('/api/topology/links', {
+            await apiFetch('/api/topology/links', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data),

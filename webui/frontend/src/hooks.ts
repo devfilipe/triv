@@ -1,6 +1,7 @@
 /* triv WebUI — React hooks for API data fetching */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { apiFetch } from './apiFetch'
 import type { NodeDef, DriverInfo, LinkDef, TopologyDef, SystemStatus, BridgeStatus, ProjectsResponse, ActionDef } from './types'
 
 // Generic poll hook
@@ -9,7 +10,7 @@ function usePoll<T>(url: string, interval: number, initial: T): { data: T; refre
   const [loading, setLoading] = useState(true)
 
   const doFetch = useCallback(() => {
-    fetch(url)
+    apiFetch(url)
       .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
@@ -39,7 +40,7 @@ export function useTopology() {
   const [topo, setTopo] = useState<TopologyDef | null>(null)
   const [rev, setRev] = useState(0)
   useEffect(() => {
-    fetch('/api/topology').then(r => r.json()).then(setTopo).catch(() => {})
+    apiFetch('/api/topology').then(r => r.json()).then(setTopo).catch(() => {})
   }, [rev])
   const refresh = useCallback(() => setRev(r => r + 1), [])
   return { data: topo, refresh }
@@ -50,7 +51,7 @@ export function useDrivers() {
   const [drivers, setDrivers] = useState<DriverInfo[]>([])
   const [rev, setRev] = useState(0)
   useEffect(() => {
-    fetch('/api/drivers').then(r => r.json()).then(setDrivers).catch(() => {})
+    apiFetch('/api/drivers').then(r => r.json()).then(setDrivers).catch(() => {})
   }, [rev])
   const refresh = useCallback(() => setRev(r => r + 1), [])
   return { data: drivers, refresh }
@@ -82,7 +83,7 @@ export function usePingNode() {
   const ping = useCallback(async (nodeId: string) => {
     setLoading(true)
     try {
-      const r = await fetch(`/api/ping/${nodeId}`)
+      const r = await apiFetch(`/api/ping/${nodeId}`)
       const data = await r.json()
       setResult(data)
       return data
@@ -99,7 +100,7 @@ export function useAction() {
   const act = useCallback(async (url: string, body?: any) => {
     setBusy(true)
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: 'POST',
         headers: body ? { 'Content-Type': 'application/json' } : {},
         body: body ? JSON.stringify(body) : undefined,
@@ -117,7 +118,7 @@ export function useTopologyActions() {
   const [actions, setActions] = useState<ActionDef[]>([])
   const [rev, setRev] = useState(0)
   useEffect(() => {
-    fetch('/api/topology/actions')
+    apiFetch('/api/topology/actions')
       .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
       .then(setActions)
       .catch(() => setActions([]))
@@ -125,7 +126,7 @@ export function useTopologyActions() {
   const refresh = useCallback(() => setRev(r => r + 1), [])
 
   const executeAction = useCallback(async (actionId: string): Promise<any> => {
-    const res = await fetch(`/api/topology/action/${actionId}`, { method: 'POST' })
+    const res = await apiFetch(`/api/topology/action/${actionId}`, { method: 'POST' })
     return res.json()
   }, [])
 
@@ -145,7 +146,7 @@ export function useDiscoveredLinks() {
   const discover = useCallback(async () => {
     setLoading(true)
     try {
-      const r = await fetch('/api/links/discovered')
+      const r = await apiFetch('/api/links/discovered')
       const d = await r.json()
       setData(d)
       return d as DiscoveredLinksResponse
@@ -179,7 +180,7 @@ export function useOrgs() {
   const [loading, setLoading] = useState(true)
 
   const doFetch = useCallback(() => {
-    fetch('/api/orgs')
+    apiFetch('/api/orgs')
       .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
@@ -188,14 +189,14 @@ export function useOrgs() {
   useEffect(() => { doFetch() }, [doFetch])
 
   const activate = useCallback(async (orgId: string) => {
-    const res = await fetch(`/api/orgs/${orgId}/activate`, { method: 'POST' })
+    const res = await apiFetch(`/api/orgs/${orgId}/activate`, { method: 'POST' })
     const result = await res.json()
     if (result.ok) doFetch()
     return result
   }, [doFetch])
 
   const createOrg = useCallback(async (name: string, vendors?: string[]) => {
-    const res = await fetch('/api/orgs', {
+    const res = await apiFetch('/api/orgs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, vendors: vendors || [] }),
@@ -206,7 +207,7 @@ export function useOrgs() {
   }, [doFetch])
 
   const updateOrg = useCallback(async (orgId: string, body: { name?: string; add_vendors?: string[]; remove_vendors?: string[] }) => {
-    const res = await fetch(`/api/orgs/${orgId}`, {
+    const res = await apiFetch(`/api/orgs/${orgId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -217,7 +218,7 @@ export function useOrgs() {
   }, [doFetch])
 
   const deleteOrg = useCallback(async (orgId: string) => {
-    const res = await fetch(`/api/orgs/${orgId}`, { method: 'DELETE' })
+    const res = await apiFetch(`/api/orgs/${orgId}`, { method: 'DELETE' })
     const result = await res.json()
     if (result.ok) doFetch()
     return result
@@ -232,7 +233,7 @@ export function useProjects() {
   const [loading, setLoading] = useState(true)
 
   const doFetch = useCallback(() => {
-    fetch('/api/projects')
+    apiFetch('/api/projects')
       .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
@@ -241,18 +242,17 @@ export function useProjects() {
   useEffect(() => { doFetch() }, [doFetch])
 
   const activate = useCallback(async (projectId: string) => {
-    const res = await fetch(`/api/projects/${projectId}/activate`, { method: 'POST' })
+    const res = await apiFetch(`/api/projects/${projectId}/activate`, { method: 'POST' })
     const result = await res.json()
     if (result.ok) doFetch()
     else if (!result.ok && res.status === 409) {
-      // Return the error detail so the caller can show it
       return { ok: false, detail: result.detail }
     }
     return result
   }, [doFetch])
 
   const addProject = useCallback(async (path: string, name?: string, description?: string) => {
-    const res = await fetch('/api/projects', {
+    const res = await apiFetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path, name: name || '', description: description || '' }),
@@ -263,20 +263,20 @@ export function useProjects() {
   }, [doFetch])
 
   const removeProject = useCallback(async (projectId: string) => {
-    const res = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' })
+    const res = await apiFetch(`/api/projects/${projectId}`, { method: 'DELETE' })
     const result = await res.json()
     if (result.ok) doFetch()
     return result
   }, [doFetch])
 
   const cleanupProject = useCallback(async (projectId: string) => {
-    const res = await fetch(`/api/projects/${projectId}/cleanup`, { method: 'POST' })
+    const res = await apiFetch(`/api/projects/${projectId}/cleanup`, { method: 'POST' })
     if (!res.ok) throw new Error(`Cleanup failed: ${res.status} ${res.statusText}`)
     return await res.json()
   }, [])
 
   const scanDir = useCallback(async (path: string) => {
-    const res = await fetch('/api/projects/scan', {
+    const res = await apiFetch('/api/projects/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path }),
@@ -285,7 +285,7 @@ export function useProjects() {
   }, [])
 
   const browseDir = useCallback(async (path: string) => {
-    const res = await fetch('/api/projects/browse', {
+    const res = await apiFetch('/api/projects/browse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path }),
@@ -294,12 +294,12 @@ export function useProjects() {
   }, [])
 
   const getDefaults = useCallback(async () => {
-    const res = await fetch('/api/projects/defaults')
+    const res = await apiFetch('/api/projects/defaults')
     return await res.json()
   }, [])
 
   const createProject = useCallback(async (name: string, dirName?: string, description?: string) => {
-    const res = await fetch('/api/projects/create', {
+    const res = await apiFetch('/api/projects/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, dir_name: dirName || '', description: description || '' }),
@@ -379,7 +379,7 @@ export interface NetworkTemplate {
 export function useNetworkTemplates() {
   const [data, setData] = useState<NetworkTemplate[]>([])
   useEffect(() => {
-    fetch('/api/v2/networks/templates').then(r => r.json()).then(setData).catch(() => {})
+    apiFetch('/api/v2/networks/templates').then(r => r.json()).then(setData).catch(() => {})
   }, [])
   return { data }
 }

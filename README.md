@@ -329,6 +329,7 @@ All persistent triv state lives under `~/.triv` on the host. This directory is c
 
 ```
 ~/.triv/
+├── users.json                   # User accounts (created on first boot)
 ├── vendors/                     # Vendor driver packages
 │   └── <vendor>/
 │       ├── drivers/             # JSON and Python drivers for this vendor
@@ -377,6 +378,62 @@ chmod +x setup.sh
 
 ---
 
+## 🔐 Authentication
+
+triv requires login. All API routes are protected by JWT — the WebUI redirects to the login page automatically when not authenticated.
+
+### First run
+
+`setup.sh docker` handles everything automatically:
+
+- If `docker/.env` is missing, it is created from `.env.example` (default password: `admin`)
+- If `TRIV_SECRET_KEY` is empty, a random key is generated and saved to `docker/.env`
+- On first boot, the admin user is created in `~/.triv/users.json`
+
+**Login:** `admin` / `admin`
+
+To use a custom password before the first boot, edit `docker/.env`:
+
+```bash
+TRIV_ADMIN_PASSWORD=your_password_here
+```
+
+> `TRIV_ADMIN_PASSWORD` is only read on first boot (when `~/.triv/users.json` doesn't exist yet). After that it has no effect — the password lives as a bcrypt hash in `users.json`.
+
+### Changing the password
+
+- **Phase 1 (coming):** Settings → Users → Reset password in the UI
+- **Now:** Delete `~/.triv/users.json`, set a new `TRIV_ADMIN_PASSWORD` in `docker/.env`, and restart
+
+### Sessions & JWT
+
+| Property | Value |
+|---|---|
+| Algorithm | HS256 |
+| Default lifetime | 8 hours (`TRIV_TOKEN_EXPIRE_HOURS`) |
+| Storage | `localStorage` (`triv_token`) |
+| Auto-refresh | Yes — renewed automatically when < 5 minutes remain |
+| On expiry | 401 → frontend redirects to login |
+| Logout | Clears token from localStorage immediately |
+
+Tokens are signed with `TRIV_SECRET_KEY`. If that key changes (or is not set and the container restarts), all active sessions are invalidated — users will be redirected to login on their next API call.
+
+For persistent sessions across container restarts, set a fixed key:
+
+```bash
+echo "TRIV_SECRET_KEY=$(openssl rand -hex 32)" >> docker/.env
+```
+
+To adjust session duration:
+
+```bash
+TRIV_TOKEN_EXPIRE_HOURS=24   # 24-hour sessions
+```
+
+> **API access:** to call the API directly (e.g. curl, scripts), obtain a token via `POST /api/auth/login` and pass it as `Authorization: Bearer <token>` on subsequent requests.
+
+---
+
 ## ▶️ Running
 
 ### 🐳 Docker (recommended)
@@ -384,6 +441,10 @@ chmod +x setup.sh
 The fastest way to build and run triv is with the setup script:
 
 ```bash
+# First time: configure credentials
+cp docker/.env.example docker/.env
+# edit docker/.env and set TRIV_ADMIN_PASSWORD
+
 ./setup.sh docker
 ```
 
@@ -513,18 +574,23 @@ triv/
 │       └── generic_driver_*.json        # JSON driver definitions
 ├── webui/
 │   ├── backend/                 # FastAPI application
-│   │   ├── app.py
-│   │   ├── shared.py            # Global state (topology, registry, paths)
+│   │   ├── app.py               # Entry point: middleware, routers, startup
+│   │   ├── auth.py              # JWT + bcrypt + user store (users.json)
+│   │   ├── shared.py            # Global state (topology, registry, paths, auth config)
 │   │   ├── node_helpers.py      # Capabilities resolution, action merging
-│   │   └── routers/             # REST routers (nodes, drivers, networks, …)
+│   │   └── routers/             # REST routers (nodes, drivers, networks, auth, …)
 │   └── frontend/                # React + TypeScript
 │       └── src/
 │           ├── App.tsx           # Main layout, view routing, apps launcher
+│           ├── AuthContext.tsx   # Auth provider: token, useAuth(), isAdmin, canEdit
+│           ├── LoginPage.tsx     # Login form
+│           ├── apiFetch.ts       # fetch() wrapper: injects Bearer token, handles 401
 │           ├── BuilderCanvas.tsx # React Flow topology canvas
 │           ├── CapabilitiesModal.tsx # Node capabilities editor
 │           ├── NodeDrivers.tsx   # Driver catalog browser/editor
 │           └── AiCentral.tsx     # AI/LLM resource management
 ├── docker/                      # Dockerfiles + docker-compose.yml + nginx.conf
+│   ├── .env.example             # Environment template (copy to .env before first run)
 ├── pyproject.toml               # triv as installable Python package
 ├── setup.sh                     # One-command environment setup
 └── Makefile                     # All dev/run/docker targets
@@ -540,6 +606,10 @@ Key endpoints:
 
 | Method | Path | Description |
 |---|---|---|
+| `GET` | `/health` | Health check — no auth required |
+| `POST` | `/api/auth/login` | Obtain JWT (`{ username, password }`) |
+| `POST` | `/api/auth/refresh` | Renew JWT (Bearer token required) |
+| `GET` | `/api/auth/me` | Return authenticated user info |
 | `GET` | `/api/nodes` | List all topology nodes with resolved actions |
 | `POST` | `/api/nodes/{id}/action/{action_id}` | Execute a node action |
 | `GET` | `/api/nodes/{id}/capabilities` | Get node capabilities file |

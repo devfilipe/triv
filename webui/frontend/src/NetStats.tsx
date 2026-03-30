@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — NetStats: comprehensive network infrastructure viewer
  *
  * Full-page dashboard showing live state of all triv-managed network
@@ -238,7 +239,7 @@ export default function NetStats() {
 
   const doFetch = useCallback(() => {
     setLoading(true)
-    fetch('/api/netstats')
+    apiFetch('/api/netstats')
       .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
       .then(d => { setData(d); setError(null) })
       .catch(e => setError(String(e)))
@@ -248,13 +249,13 @@ export default function NetStats() {
   const staleCount = data?.bridges.filter(b => b.stale).length ?? 0
 
   const removeBridge = useCallback((name: string) => {
-    fetch(`/api/netstats/bridges/${encodeURIComponent(name)}`, { method: 'DELETE' })
+    apiFetch(`/api/netstats/bridges/${encodeURIComponent(name)}`, { method: 'DELETE' })
       .then(r => r.json())
       .then(() => doFetch())
   }, [doFetch])
 
   const cleanupStale = useCallback(() => {
-    fetch('/api/netstats/cleanup-stale', { method: 'POST' })
+    apiFetch('/api/netstats/cleanup-stale', { method: 'POST' })
       .then(r => r.json())
       .then(() => doFetch())
   }, [doFetch])

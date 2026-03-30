@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — NetworkManager: v2 first-class network management panel
  *
  * Driver-style two-panel layout:
@@ -234,7 +235,7 @@ function NetworkFormModal({ initial, editing, allNets, onClose, onSaved }: {
       const url = editing && initial._network_id
         ? `/api/v2/networks/${initial._network_id}`
         : '/api/v2/networks'
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: editing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -557,7 +558,7 @@ export default function NetworkManager({ networks, templates, refresh, refreshCa
   const runAction = useCallback(async (netId: string, action: string) => {
     setBusyAction(`${netId}:${action}`)
     try {
-      await fetch(`/api/v2/networks/${netId}/${action}`, { method: 'POST' })
+      await apiFetch(`/api/v2/networks/${netId}/${action}`, { method: 'POST' })
       setTimeout(refreshAll, 400)
     } finally {
       setTimeout(() => setBusyAction(null), 600)
@@ -586,7 +587,7 @@ export default function NetworkManager({ networks, templates, refresh, refreshCa
     if (!confirm(`Delete network "${net.label || net.id}"?\n\nThis will undeploy (if deployed) and remove the network definition.`)) return
     setDeleting(net.network_id)
     try {
-      await fetch(`/api/v2/networks/${net.network_id}`, { method: 'DELETE' })
+      await apiFetch(`/api/v2/networks/${net.network_id}`, { method: 'DELETE' })
       setTimeout(() => {
         refreshAll()
         setSelection(null)

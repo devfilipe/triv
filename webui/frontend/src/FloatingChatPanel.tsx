@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — FloatingChatPanel: interactive multi-turn LLM chat */
 
 import React, { useState, useRef, useEffect } from 'react'
@@ -84,7 +85,7 @@ export default function FloatingChatPanel({ nodeId, title, onClose }: Props) {
     inputRef.current?.focus()
 
     try {
-      const res = await fetch(`/api/nodes/${nodeId}/chat`, {
+      const res = await apiFetch(`/api/nodes/${nodeId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages.map(m => ({ role: m.role, content: m.content })), system }),

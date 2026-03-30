@@ -26,6 +26,7 @@ TRIV_API_BASE = os.environ.get("TRIV_API_URL", "http://localhost:8481")
 # HTTP helpers
 # ---------------------------------------------------------------------------
 
+
 def _get(path: str) -> dict:
     url = f"{TRIV_API_BASE}{path}"
     try:
@@ -41,8 +42,9 @@ def _get(path: str) -> dict:
 def _post(path: str, body: dict) -> dict:
     url = f"{TRIV_API_BASE}{path}"
     data = json.dumps(body).encode()
-    req = urllib.request.Request(url, data=data, method="POST",
-                                  headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(
+        url, data=data, method="POST", headers={"Content-Type": "application/json"}
+    )
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return json.loads(r.read())
@@ -56,8 +58,9 @@ def _post(path: str, body: dict) -> dict:
 def _put(path: str, body: dict) -> dict:
     url = f"{TRIV_API_BASE}{path}"
     data = json.dumps(body).encode()
-    req = urllib.request.Request(url, data=data, method="PUT",
-                                  headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(
+        url, data=data, method="PUT", headers={"Content-Type": "application/json"}
+    )
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return json.loads(r.read())
@@ -85,12 +88,19 @@ def _delete(path: str) -> dict:
 # Topology — read
 # ---------------------------------------------------------------------------
 
+
 def list_nodes(_payload: dict) -> dict:
     result = _get("/api/nodes")
     if isinstance(result, list):
-        nodes = [{"id": n.get("id"), "label": n.get("label", n.get("id")),
-                  "runtime": n.get("runtime"), "category": n.get("category")}
-                 for n in result]
+        nodes = [
+            {
+                "id": n.get("id"),
+                "label": n.get("label", n.get("id")),
+                "runtime": n.get("runtime"),
+                "category": n.get("category"),
+            }
+            for n in result
+        ]
         return {"ok": True, "nodes": nodes, "count": len(nodes)}
     return result
 
@@ -99,11 +109,19 @@ def get_topology_summary(_payload: dict) -> dict:
     result = _get("/api/topology")
     if "nodes" not in result and "ok" in result and not result["ok"]:
         return result
-    nodes = [{"id": n.get("id"), "label": (n.get("properties") or {}).get("label", n.get("id")),
-              "runtime": n.get("runtime"), "category": n.get("category")}
-             for n in (result.get("nodes") or [])]
-    links = [{"id": lk.get("id"), "source": lk.get("source"), "target": lk.get("target")}
-             for lk in (result.get("links") or [])]
+    nodes = [
+        {
+            "id": n.get("id"),
+            "label": (n.get("properties") or {}).get("label", n.get("id")),
+            "runtime": n.get("runtime"),
+            "category": n.get("category"),
+        }
+        for n in (result.get("nodes") or [])
+    ]
+    links = [
+        {"id": lk.get("id"), "source": lk.get("source"), "target": lk.get("target")}
+        for lk in (result.get("links") or [])
+    ]
     networks = result.get("network_defs") or []
     return {"ok": True, "nodes": nodes, "links": links, "networks": networks}
 
@@ -111,6 +129,7 @@ def get_topology_summary(_payload: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Topology — nodes
 # ---------------------------------------------------------------------------
+
 
 def create_node(payload: dict) -> dict:
     label = payload.get("label", "")
@@ -182,6 +201,7 @@ def delete_node(payload: dict) -> dict:
 # Topology — links
 # ---------------------------------------------------------------------------
 
+
 def add_link(payload: dict) -> dict:
     body = {
         "source": payload.get("source_node", ""),
@@ -202,6 +222,7 @@ def remove_link(payload: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Capabilities
 # ---------------------------------------------------------------------------
+
 
 def get_node_capabilities(payload: dict) -> dict:
     node_id = payload.get("node_id", "")
@@ -230,6 +251,7 @@ def set_node_capabilities(payload: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Node actions
 # ---------------------------------------------------------------------------
+
 
 def get_node_actions(payload: dict) -> dict:
     """List executable actions available on a node."""
@@ -266,6 +288,7 @@ def run_node_action(payload: dict) -> dict:
 # Networks
 # ---------------------------------------------------------------------------
 
+
 def list_networks(_payload: dict) -> dict:
     result = _get("/api/v2/networks")
     if isinstance(result, list):
@@ -297,6 +320,7 @@ def assign_node_to_network(payload: dict) -> dict:
 # Node lifecycle
 # ---------------------------------------------------------------------------
 
+
 def start_node(payload: dict) -> dict:
     node_id = payload.get("node_id", "")
     if not node_id:
@@ -321,6 +345,7 @@ def restart_node(payload: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Secrets
 # ---------------------------------------------------------------------------
+
 
 def list_secrets(_payload: dict) -> dict:
     """List all secret names (values are never returned)."""
@@ -355,6 +380,7 @@ def delete_secret(payload: dict) -> dict:
 # Networks (extended)
 # ---------------------------------------------------------------------------
 
+
 def delete_network(payload: dict) -> dict:
     network_id = payload.get("network_id", "")
     if not network_id:
@@ -380,6 +406,7 @@ def undeploy_network(payload: dict) -> dict:
 # Orgs
 # ---------------------------------------------------------------------------
 
+
 def list_orgs(_payload: dict) -> dict:
     """List all organizations."""
     result = _get("/api/orgs")
@@ -394,13 +421,20 @@ def list_orgs(_payload: dict) -> dict:
 # Drivers
 # ---------------------------------------------------------------------------
 
+
 def list_drivers(_payload: dict) -> dict:
     """List all available drivers (built-in and vendor)."""
     result = _get("/api/drivers/catalog")
     if isinstance(result, list):
-        drivers = [{"id": d.get("id"), "label": d.get("label", d.get("id")),
-                    "type": d.get("type"), "vendor": d.get("vendor")}
-                   for d in result]
+        drivers = [
+            {
+                "id": d.get("id"),
+                "label": d.get("label", d.get("id")),
+                "type": d.get("type"),
+                "vendor": d.get("vendor"),
+            }
+            for d in result
+        ]
         return {"ok": True, "drivers": drivers, "count": len(drivers)}
     return result
 
@@ -409,14 +443,22 @@ def list_drivers(_payload: dict) -> dict:
 # Projects
 # ---------------------------------------------------------------------------
 
+
 def list_projects(_payload: dict) -> dict:
     """List all registered triv projects."""
     result = _get("/api/projects")
     if "projects" not in result:
         return result
-    projects = [{"id": p.get("id"), "name": p.get("name"), "path": p.get("path"),
-                 "active": p.get("active", False), "has_topology": p.get("has_topology", False)}
-                for p in result.get("projects", [])]
+    projects = [
+        {
+            "id": p.get("id"),
+            "name": p.get("name"),
+            "path": p.get("path"),
+            "active": p.get("active", False),
+            "has_topology": p.get("has_topology", False),
+        }
+        for p in result.get("projects", [])
+    ]
     return {"ok": True, "active": result.get("active", ""), "projects": projects}
 
 
@@ -443,7 +485,7 @@ def create_project(payload: dict) -> dict:
         defaults = _get("/api/projects/defaults")
         triv_home = defaults.get("projects_root", "")
         if triv_home.endswith("/vendors"):
-            triv_home = triv_home[:-len("/vendors")]
+            triv_home = triv_home[: -len("/vendors")]
         body["parent"] = f"{triv_home}/vendors/{vendor}"
     elif "parent" in payload:
         body["parent"] = payload["parent"]
@@ -471,46 +513,46 @@ def reload_topology(_payload: dict) -> dict:
 
 ACTIONS = {
     # Topology — read
-    "list-nodes":              list_nodes,
-    "get-topology-summary":    get_topology_summary,
+    "list-nodes": list_nodes,
+    "get-topology-summary": get_topology_summary,
     # Topology — nodes
-    "create-node":             create_node,
-    "update-node":             update_node,
-    "update-node-label":       update_node_label,
-    "delete-node":             delete_node,
+    "create-node": create_node,
+    "update-node": update_node,
+    "update-node-label": update_node_label,
+    "delete-node": delete_node,
     # Topology — links
-    "add-link":                add_link,
-    "remove-link":             remove_link,
+    "add-link": add_link,
+    "remove-link": remove_link,
     # Capabilities
-    "get-node-capabilities":   get_node_capabilities,
-    "set-node-capabilities":   set_node_capabilities,
+    "get-node-capabilities": get_node_capabilities,
+    "set-node-capabilities": set_node_capabilities,
     # Node actions
-    "get-node-actions":        get_node_actions,
-    "run-node-action":         run_node_action,
+    "get-node-actions": get_node_actions,
+    "run-node-action": run_node_action,
     # Node lifecycle
-    "start-node":              start_node,
-    "stop-node":               stop_node,
-    "restart-node":            restart_node,
+    "start-node": start_node,
+    "stop-node": stop_node,
+    "restart-node": restart_node,
     # Secrets
-    "list-secrets":            list_secrets,
-    "set-secret":              set_secret,
-    "delete-secret":           delete_secret,
+    "list-secrets": list_secrets,
+    "set-secret": set_secret,
+    "delete-secret": delete_secret,
     # Networks
-    "list-networks":           list_networks,
-    "create-network":          create_network,
-    "assign-node-to-network":  assign_node_to_network,
-    "delete-network":          delete_network,
-    "deploy-network":          deploy_network,
-    "undeploy-network":        undeploy_network,
+    "list-networks": list_networks,
+    "create-network": create_network,
+    "assign-node-to-network": assign_node_to_network,
+    "delete-network": delete_network,
+    "deploy-network": deploy_network,
+    "undeploy-network": undeploy_network,
     # Orgs
-    "list-orgs":               list_orgs,
+    "list-orgs": list_orgs,
     # Drivers
-    "list-drivers":            list_drivers,
+    "list-drivers": list_drivers,
     # Projects
-    "list-projects":           list_projects,
-    "create-project":          create_project,
-    "activate-project":        activate_project,
-    "reload-topology":         reload_topology,
+    "list-projects": list_projects,
+    "create-project": create_project,
+    "activate-project": activate_project,
+    "reload-topology": reload_topology,
 }
 
 
@@ -530,7 +572,11 @@ def main() -> None:
 
     fn = ACTIONS.get(action)
     if not fn:
-        print(json.dumps({"ok": False, "error": f"Unknown action: {action}. Available: {list(ACTIONS)}"}))
+        print(
+            json.dumps(
+                {"ok": False, "error": f"Unknown action: {action}. Available: {list(ACTIONS)}"}
+            )
+        )
         sys.exit(1)
 
     result = fn(payload)

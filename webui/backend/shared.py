@@ -6,6 +6,7 @@ global state (topology, registry, project paths, health cache, etc.).
 """
 
 import os
+import secrets as _secrets_mod
 import threading
 from pathlib import Path
 from typing import Any
@@ -50,8 +51,8 @@ state_tracker = StateTracker()
 # Wizard state
 # ---------------------------------------------------------------------------
 
-wizard_topology: Any = None          # loaded by WizardManager at startup
-wizard_config: dict = {}             # persisted config (provider, model, enabled, instructions)
+wizard_topology: Any = None  # loaded by WizardManager at startup
+wizard_config: dict = {}  # persisted config (provider, model, enabled, instructions)
 WIZARD_DIR: Path = TOOLS_DIR / "triv" / "wizard"
 WIZARD_TOPOLOGY_FILE: Path = WIZARD_DIR / "projects" / "wizard" / "topology.json"
 WIZARD_CAPS_DIR: Path = WIZARD_DIR / "capabilities"
@@ -64,6 +65,24 @@ WIZARD_RULES_FILE: Path = WIZARD_DIR / ".rules"
 
 # URL the backend is reachable at — used by wizard_app.py subprocess
 SERVER_URL: str = os.environ.get("TRIV_API_URL", "http://localhost:8481")
+
+# ---------------------------------------------------------------------------
+# Auth configuration
+# ---------------------------------------------------------------------------
+
+SECRET_KEY: str = os.environ.get("TRIV_SECRET_KEY", "")
+if not SECRET_KEY:
+    SECRET_KEY = _secrets_mod.token_hex(32)
+    print(
+        "[auth] WARNING: TRIV_SECRET_KEY not set — using a random key. "
+        "All tokens will be invalidated on restart. "
+        "Set TRIV_SECRET_KEY in your .env file for persistent sessions."
+    )
+
+ADMIN_USER: str = os.environ.get("TRIV_ADMIN_USER", "admin")
+ADMIN_PASSWORD: str = os.environ.get("TRIV_ADMIN_PASSWORD", "")
+TOKEN_EXPIRE_HOURS: int = int(os.environ.get("TRIV_TOKEN_EXPIRE_HOURS", "8"))
+MAX_USERS: int = int(os.environ.get("TRIV_MAX_USERS", "3"))
 
 # ---------------------------------------------------------------------------
 # Health check cache

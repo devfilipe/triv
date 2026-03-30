@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — FloatingWizardPanel: context-aware AI Wizard chat */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
@@ -60,8 +61,8 @@ export default function FloatingWizardPanel({ context, contextLabel, onClose, on
 
   // Fetch wizard status + active org on mount; abort in-flight task on unmount
   useEffect(() => {
-    fetch('/api/wizard/status').then(r => r.json()).then(setStatus).catch(() => setStatus(null))
-    fetch('/api/orgs/active').then(r => r.json()).then(d => setActiveOrg(d.id ? d : null)).catch(() => setActiveOrg(null))
+    apiFetch('/api/wizard/status').then(r => r.json()).then(setStatus).catch(() => setStatus(null))
+    apiFetch('/api/orgs/active').then(r => r.json()).then(d => setActiveOrg(d.id ? d : null)).catch(() => setActiveOrg(null))
     return () => { abortRef.current?.abort() }
   }, [])
 
@@ -124,7 +125,7 @@ export default function FloatingWizardPanel({ context, contextLabel, onClose, on
       const body: Record<string, any> = { task: text, context }
       if (confirmedActions) body.confirmed_actions = confirmedActions
 
-      const res = await fetch('/api/wizard/task', {
+      const res = await apiFetch('/api/wizard/task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

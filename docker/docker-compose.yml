@@ -8,6 +8,7 @@
 # Prerequisites on the host:
 #   - libvirtd running with UNIX socket at /var/run/libvirt/libvirt-sock
 #   - ~/.triv directory (created automatically by setup.sh)
+#   - docker/.env file with required secrets (copy from docker/.env.example)
 #
 # Usage:
 #   ./setup.sh docker          # build + start (recommended)
@@ -26,8 +27,12 @@ services:
       dockerfile: docker/Dockerfile.webui-backend
       tags:
         - triv-backend:latest
+    env_file:
+      - path: .env
+        required: false
     environment:
       - TRIV_HOME=/root/.triv
+      - TRIV_API_URL=http://localhost:8481
     volumes:
       # ── triv data directory (single source of truth) ──
       - ${HOME}/.triv:/root/.triv
@@ -43,6 +48,12 @@ services:
     pid: host
     privileged: true
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8481/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend:
     container_name: triv-frontend

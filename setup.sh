@@ -97,6 +97,38 @@ do_local() {
 
 do_docker() {
     ensure_triv_home
+
+    local ENV_FILE="$REPO/docker/.env"
+    local ENV_EXAMPLE="$REPO/docker/.env.example"
+
+    # ── Check .env exists — auto-copy from example if missing ────────
+    if [ ! -f "$ENV_FILE" ]; then
+        cp "$ENV_EXAMPLE" "$ENV_FILE"
+        echo -e "  ${GREEN}✓${RESET} Created ${CYAN}docker/.env${RESET} from .env.example"
+    fi
+
+    # ── Source .env ──────────────────────────────────────────────────
+    # shellcheck disable=SC1090
+    set -a; source "$ENV_FILE"; set +a
+
+    # Warn about default password but don't block — it's intentional for quick start
+    if [ "${TRIV_ADMIN_PASSWORD:-}" = "admin" ] && [ ! -f "$TRIV_HOME/users.json" ]; then
+        echo ""
+        echo -e "  ${YELLOW}NOTE:${RESET} Using default admin password 'admin'."
+        echo -e "  ${DIM}Change it after login via Settings → Users (Phase 1), or${RESET}"
+        echo -e "  ${DIM}edit docker/.env and delete ~/.triv/users.json to reset.${RESET}"
+        echo ""
+    fi
+
+    # ── Auto-generate TRIV_SECRET_KEY if missing ────────────────────
+    if [ -z "${TRIV_SECRET_KEY:-}" ]; then
+        local GENERATED_KEY
+        GENERATED_KEY="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
+        echo "TRIV_SECRET_KEY=${GENERATED_KEY}" >> "$ENV_FILE"
+        export TRIV_SECRET_KEY="$GENERATED_KEY"
+        echo -e "  ${GREEN}✓${RESET} Generated TRIV_SECRET_KEY and saved to docker/.env"
+    fi
+
     echo -e "\n${BOLD}==> Building and starting docker compose stack${RESET}"
     docker compose -f "$REPO/docker/docker-compose.yml" up --build -d
     echo -e "  ${GREEN}✓${RESET} Containers started"

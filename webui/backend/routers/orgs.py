@@ -28,6 +28,7 @@ router = APIRouter(prefix="/api/orgs", tags=["orgs"])
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
+
 def _slugify(name: str) -> str:
     s = name.lower().strip()
     s = re.sub(r"[^\w\s-]", "", s)
@@ -56,7 +57,9 @@ def _list_orgs() -> list[dict]:
     for f in sorted(shared.ORGS_DIR.glob("*.json")):
         try:
             d = json.loads(f.read_text())
-            orgs.append({"id": f.stem, "name": d.get("name", f.stem), "vendors": d.get("vendors", [])})
+            orgs.append(
+                {"id": f.stem, "name": d.get("name", f.stem), "vendors": d.get("vendors", [])}
+            )
         except Exception:
             pass
     return orgs
@@ -64,11 +67,13 @@ def _list_orgs() -> list[dict]:
 
 def _get_active_org() -> str:
     from routers.projects import _load_projects
+
     return _load_projects().get("active_org", "")
 
 
 def _set_active_org(org_id: str) -> None:
     from routers.projects import _load_projects, _save_projects
+
     data = _load_projects()
     data["active_org"] = org_id
     _save_projects(data)
@@ -87,6 +92,7 @@ def _vendor_owner(vendor: str) -> str | None:
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────
+
 
 @router.get("")
 def list_orgs():
@@ -148,7 +154,12 @@ def activate_org(org_id: str):
 def get_org(org_id: str):
     d = _load_org(org_id)
     active = _get_active_org()
-    return {"id": org_id, "name": d.get("name", org_id), "vendors": d.get("vendors", []), "active": org_id == active}
+    return {
+        "id": org_id,
+        "name": d.get("name", org_id),
+        "vendors": d.get("vendors", []),
+        "active": org_id == active,
+    }
 
 
 @router.put("/{org_id}")
@@ -157,7 +168,7 @@ def update_org(org_id: str, body: dict = Body(...)):
     if "name" in body:
         d["name"] = body["name"]
     vendors = list(d.get("vendors", []))
-    for v in (body.get("add_vendors") or []):
+    for v in body.get("add_vendors") or []:
         v = v.strip()
         if not v or v in vendors:
             continue
@@ -165,7 +176,7 @@ def update_org(org_id: str, body: dict = Body(...)):
         if owner and owner != org_id:
             raise HTTPException(409, f"Vendor '{v}' already belongs to org '{owner}'")
         vendors.append(v)
-    for v in (body.get("remove_vendors") or []):
+    for v in body.get("remove_vendors") or []:
         vendors = [x for x in vendors if x != v.strip()]
     d["vendors"] = vendors
     _save_org(org_id, d)

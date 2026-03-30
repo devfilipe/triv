@@ -5,9 +5,11 @@ Bootstraps core state, registers all API routers, starts background
 threads, and serves the built frontend.
 
 Launch:
-    uvicorn webui.backend.app:app --host 0.0.0.0 --port 8080
+    uvicorn webui.backend.app:app --host 0.0.0.0 --port 8081
 """
 
+import importlib.metadata
+import os
 import sys
 import threading
 from pathlib import Path
@@ -19,8 +21,9 @@ _backend_dir = str(Path(__file__).resolve().parent)
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 # ---------------------------------------------------------------------------
@@ -37,17 +40,63 @@ bootstrap.bootstrap()
 
 app = FastAPI(title="triv WebUI", version="1.0.0")
 
+# CORS — restrict to explicit allowed origins when configured
+_origins_raw = os.environ.get("TRIV_ALLOWED_ORIGINS", "")
+_origins = [o.strip() for o in _origins_raw.split(",") if o.strip()] or ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ---------------------------------------------------------------------------
-# 3. Register routers
+# 3. Auth middleware
 # ---------------------------------------------------------------------------
 
+import auth
+
+_PUBLIC_PATHS = {"/health", "/api/auth/login", "/api/auth/refresh"}
+
+
+@app.middleware("http")
+async def require_auth(request: Request, call_next):
+    path = request.url.path
+    # Static assets and public endpoints pass through
+    if path in _PUBLIC_PATHS or not path.startswith("/api"):
+        return await call_next(request)
+    # WebSocket upgrade — defer auth to a later phase
+    if "upgrade" in (request.headers.get("connection") or "").lower():
+        return await call_next(request)
+    token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    payload = auth.verify_token(token)
+    if not payload:
+        return JSONResponse({"detail": "Authentication required"}, status_code=401)
+    request.state.user = payload
+    return await call_next(request)
+
+
+# ---------------------------------------------------------------------------
+# 4. Health endpoint (no auth required)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/health")
+def health():
+    try:
+        version = importlib.metadata.version("triv")
+    except importlib.metadata.PackageNotFoundError:
+        version = "dev"
+    return {"status": "ok", "version": version}
+
+
+# ---------------------------------------------------------------------------
+# 5. Register routers
+# ---------------------------------------------------------------------------
+
+from routers.auth import router as auth_router
 from routers.topology import router as topology_router
 from routers.capabilities import router as capabilities_router
 from routers.drivers import router as drivers_router
@@ -66,6 +115,7 @@ from routers.secrets import router as secrets_router
 from routers.wizard import router as wizard_router
 from routers.orgs import router as orgs_router
 
+app.include_router(auth_router)
 app.include_router(topology_router)
 app.include_router(capabilities_router)
 app.include_router(drivers_router)
@@ -85,7 +135,7 @@ app.include_router(wizard_router)
 app.include_router(orgs_router)
 
 # ---------------------------------------------------------------------------
-# 4. Startup event
+# 6. Startup event
 # ---------------------------------------------------------------------------
 
 import shared
@@ -95,7 +145,10 @@ from routers.projects import _load_projects, _save_projects, _switch_project
 
 @app.on_event("startup")
 def _on_startup():
-    """Start background health-check polling and restore last active project."""
+    """Bootstrap admin user, start health-check polling, restore last active project."""
+
+    # Bootstrap admin user (no-op if users.json already exists)
+    auth.bootstrap_admin()
 
     # Health check thread
     t = threading.Thread(target=health_check_loop, daemon=True)
@@ -103,6 +156,7 @@ def _on_startup():
 
     # Initialise wizard topology
     from wizard_manager import WizardManager
+
     WizardManager.init()
 
     # Restore last active project
@@ -126,7 +180,7 @@ def _on_startup():
 
 
 # ---------------------------------------------------------------------------
-# 5. Serve built frontend (must be last — catch-all mount)
+# 7. Serve built frontend (must be last — catch-all mount)
 # ---------------------------------------------------------------------------
 
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
@@ -138,4 +192,4 @@ if _frontend_dist.exists():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app:app", host="0.0.0.0", port=8080, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8481, reload=True)

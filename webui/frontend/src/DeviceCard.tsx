@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — DeviceCard: single node info panel with driver-grouped actions */
 
 import React, { useState, useMemo } from 'react'
@@ -278,7 +279,7 @@ export default function DeviceCard({
   async function runBuiltinAction(verb: 'start' | 'stop' | 'restart') {
     setBusy(verb)
     try {
-      await fetch(`/api/nodes/${node.id}/${verb}`, { method: 'POST' })
+      await apiFetch(`/api/nodes/${node.id}/${verb}`, { method: 'POST' })
       setTimeout(onRefresh, 600)
     } finally {
       setBusy(null)
@@ -330,7 +331,7 @@ export default function DeviceCard({
       onShowOutput(panelTitle, '', true)
       setBusy(action.id)
       try {
-        const res = await fetch(`/api/nodes/${node.id}/action/${action.id}/stream`, {
+        const res = await apiFetch(`/api/nodes/${node.id}/action/${action.id}/stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })
@@ -377,7 +378,7 @@ export default function DeviceCard({
 
     setBusy(action.id)
     try {
-      const res = await fetch(`/api/nodes/${node.id}/action/${action.id}`, {
+      const res = await apiFetch(`/api/nodes/${node.id}/action/${action.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })

@@ -1,3 +1,4 @@
+import { apiFetch } from './apiFetch'
 /* triv WebUI — Ad-hoc devices panel (quick-add VM / container / physical) */
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -39,14 +40,14 @@ export default function AdhocDevicesPanel({ onOpenTerminal }: Props) {
   const [editing, setEditing] = useState<'create' | string | null>(null)
 
   const refresh = useCallback(() => {
-    fetch('/api/adhoc').then(r => r.json()).then(d => { setDevices(d); setLoading(false) })
+    apiFetch('/api/adhoc').then(r => r.json()).then(d => { setDevices(d); setLoading(false) })
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
 
   async function handleDelete(id: string) {
     if (!confirm(`Remove ad-hoc device "${id}"?`)) return
-    await fetch(`/api/adhoc/${id}`, { method: 'DELETE' })
+    await apiFetch(`/api/adhoc/${id}`, { method: 'DELETE' })
     refresh()
   }
 
@@ -160,13 +161,13 @@ export default function AdhocDevicesPanel({ onOpenTerminal }: Props) {
           onClose={() => setEditing(null)}
           onSave={async (data) => {
             if (editing === 'create') {
-              await fetch('/api/adhoc', {
+              await apiFetch('/api/adhoc', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
               })
             } else {
-              await fetch(`/api/adhoc/${editing}`, {
+              await apiFetch(`/api/adhoc/${editing}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
