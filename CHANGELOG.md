@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-30
+
+### Added
+
+#### Authentication & Sessions
+- JWT authentication (HS256, 8 h TTL) — all `/api/*` routes now require a `Bearer` token; `/health`, `/api/auth/login`, and `/api/auth/refresh` are public
+- `POST /api/auth/login`, `POST /api/auth/refresh`, `GET /api/auth/me` endpoints
+- Bootstrap admin on first boot from `TRIV_ADMIN_PASSWORD`; refuses boot with a clear error if the password is unset and no `users.json` exists yet
+- `TRIV_SECRET_KEY` auto-generated with a log warning when not set (sessions are invalidated on restart without a persistent key)
+- `GET /health` — unauthenticated, returns `{ status, version }`; used by Docker healthcheck and external monitoring
+- Login page with Catppuccin theme and triv logo
+- `AuthContext` — token stored in `localStorage`, automatic refresh when < 5 min remain before expiry, `isAdmin` and `canEdit` helpers
+- `apiFetch` wrapper — injects `Authorization: Bearer` header on every request; redirects to `/login` on 401 only when a token was previously present (prevents reload loop on the login page itself)
+- User avatar and logout dropdown at the bottom of the nav rail
+
+#### Builder Palette
+- **Ollama Node** palette item — drops a fully pre-configured node: `ollama/ollama` image, named volume `ollama:/root/.ollama`, port `11434`, both `generic-driver-container` and `generic-driver-ollama` drivers, and a curated set of 16 actions ready to use
+- `defaultCapabilities` field on `PaletteItem` — allows any palette item to declare a complete multi-driver capabilities template instead of auto-importing from a single JSON driver
+
+### Changed
+- CORS `allow_origins` replaced from `["*"]` to a configurable list via `TRIV_ALLOWED_ORIGINS` env var (required to pair `allow_credentials=True` with a specific origin)
+- `docker-compose.yml` — auth vars now loaded exclusively from `.env` via `env_file`; removed them from `environment:` section (they were silently overriding `env_file` with empty shell values)
+- `setup.sh docker` — auto-copies `.env.example` if `.env` is missing, warns when `TRIV_ADMIN_PASSWORD` is the default `admin`, auto-generates `TRIV_SECRET_KEY` if blank
+- `App.tsx` split into `App` (auth gate) and `AppContent` (all hooks and UI) so polling hooks do not fire before the user is authenticated
+- Wizard tool definitions reorganised into `_BASE_TOOLS` constant and named capability-group lists (`node_actions`, `node_lifecycle`, `network_ops`, `secrets`)
+- Applied ruff formatting to `wizard_app.py`, `wizard_manager.py`, `routers/wizard.py`, `routers/orgs.py`, `routers/projects.py`
+
+### Fixed
+- Driver action staleness — `clear_actions_cache()` is now called after `PUT /drivers/catalog/{id}/actions`, so updated JSON driver action commands take effect immediately without a backend restart
+- Ollama container exit on create — removed `command: sleep infinity` from the default Ollama node template; the `ollama/ollama` image uses `/bin/ollama` as entrypoint, making `sleep infinity` an invalid subcommand that caused the container to exit with PID 0
+
+### Infrastructure
+- `lint.sh` — ruff-based linting and formatting script; modes: `check`, `fix`, `format`, `format-write`, `all`; respects `RUFF_BIN_PATH` override
+
 ## [0.2.0] - 2026-03-25
 
 ### Added
@@ -101,6 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WebSocket live event bus for real-time topology and status updates
 - Plugin system with `PluginBase` and `PluginManager` for backend extensions
 
-[Unreleased]: https://github.com/devfilipe/triv/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/devfilipe/triv/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/devfilipe/triv/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/devfilipe/triv/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/devfilipe/triv/releases/tag/0.1.0
